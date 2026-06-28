@@ -4,8 +4,8 @@ import Input from '../../components/common/Input'
 import Table from '../../components/common/Table'
 
 const notifications = [
-  { id: 1, audience: 'Parents 10A', subject: 'Meeting reminder', time: '2026-06-27 09:00' },
-  { id: 2, audience: 'Teachers', subject: 'Weekly schedule', time: '2026-06-27 11:00' },
+  { id: 1, audience: 'Phụ huynh lớp 10A1', subject: 'Nhắc lịch họp phụ huynh', time: '2026-06-27 09:00' },
+  { id: 2, audience: 'Giáo viên', subject: 'Lịch tuần', time: '2026-06-27 11:00' },
 ]
 
 function NotificationPage() {
@@ -13,32 +13,32 @@ function NotificationPage() {
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="space-y-5">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Notifications</h1>
-          <p className="mt-1 text-sm text-brand-muted">Send and review school messages.</p>
+          <h1 className="text-2xl font-bold text-brand-text">Thông báo</h1>
+          <p className="mt-1 text-sm text-brand-muted">Gửi và theo dõi thông báo của nhà trường.</p>
         </div>
         <Table
           columns={[
-            { header: 'Subject', key: 'subject' },
-            { header: 'Audience', key: 'audience' },
-            { header: 'Time', key: 'time' },
+            { header: 'Nội dung', key: 'subject' },
+            { header: 'Người nhận', key: 'audience' },
+            { header: 'Thời gian', key: 'time' },
           ]}
           data={notifications}
         />
       </section>
       <aside className="rounded-lg border border-brand-border bg-brand-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-brand-text">New notification</h2>
+        <h2 className="text-lg font-semibold text-brand-text">Tạo thông báo</h2>
         <div className="mt-4 space-y-4">
-          <Input id="audience" label="Audience" placeholder="Parents 10A" />
-          <Input id="subject" label="Subject" placeholder="Message subject" />
+          <Input id="audience" label="Người nhận" placeholder="Phụ huynh lớp 10A1" />
+          <Input id="subject" label="Tiêu đề" placeholder="Tiêu đề thông báo" />
           <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-brand-text">Message</span>
+            <span className="mb-1.5 block text-sm font-medium text-brand-text">Nội dung</span>
             <textarea
               className="min-h-32 w-full rounded-md border border-brand-border px-3 py-2 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal-soft"
-              placeholder="Write message"
+              placeholder="Nhập nội dung thông báo"
             />
           </label>
           <Button className="w-full" icon={Send}>
-            Send notification
+            Gửi thông báo
           </Button>
         </div>
       </aside>

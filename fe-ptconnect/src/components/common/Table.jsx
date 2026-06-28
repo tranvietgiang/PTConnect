@@ -1,4 +1,4 @@
-function Table({ columns, data, emptyText = 'No data found' }) {
+function Table({ columns, data, emptyText = 'Chưa có dữ liệu' }) {
   return (
     <div className="overflow-hidden rounded-lg border border-brand-border bg-brand-white">
       <div className="overflow-x-auto">

@@ -6,11 +6,11 @@ function ProtectedRoute({ allowedRoles }) {
   const location = useLocation()
 
   if (!isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />
+    return <Navigate replace state={{ from: location }} to="/dang-nhap" />
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(user?.role)) {
-    return <Navigate replace to="/unauthorized" />
+    return <Navigate replace to="/khong-co-quyen" />
   }
 
   return <Outlet />

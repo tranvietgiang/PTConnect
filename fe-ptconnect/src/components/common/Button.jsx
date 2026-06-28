@@ -13,6 +13,7 @@ function Button({
   children,
   className = '',
   icon: Icon,
+  iconClassName = 'size-4',
   type = 'button',
   variant = 'primary',
   ...props
@@ -29,7 +30,7 @@ function Button({
       )}
       {...componentProps}
     >
-      {Icon ? <Icon aria-hidden="true" className="size-4" /> : null}
+      {Icon ? <Icon aria-hidden="true" className={iconClassName} /> : null}
       {children}
     </Component>
   )

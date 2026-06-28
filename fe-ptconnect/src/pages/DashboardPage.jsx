@@ -4,16 +4,16 @@ import Button from '../components/common/Button'
 import Table from '../components/common/Table'
 
 const stats = [
-  { icon: Users, label: 'Students', value: '1,248', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
-  { icon: CalendarCheck, label: 'Present today', value: '96%', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
-  { icon: GraduationCap, label: 'Average score', value: '8.4', tone: 'bg-brand-red-soft text-brand-red' },
-  { icon: Bell, label: 'New messages', value: '18', tone: 'bg-brand-red-soft text-brand-red' },
+  { icon: Users, label: 'Học sinh', value: '1,248', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
+  { icon: CalendarCheck, label: 'Có mặt hôm nay', value: '96%', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
+  { icon: GraduationCap, label: 'Điểm trung bình', value: '8.4', tone: 'bg-brand-red-soft text-brand-red' },
+  { icon: Bell, label: 'Thông báo mới', value: '18', tone: 'bg-brand-red-soft text-brand-red' },
 ]
 
 const activities = [
-  { id: 1, action: 'Attendance submitted', owner: 'Grade 10A', time: '08:05' },
-  { id: 2, action: 'Score report updated', owner: 'Math 11B', time: '09:20' },
-  { id: 3, action: 'Parent notification sent', owner: 'Grade 9C', time: '10:15' },
+  { id: 1, action: 'Đã gửi điểm danh', owner: 'Lớp 10A', time: '08:05' },
+  { id: 2, action: 'Đã cập nhật bảng điểm', owner: 'Toán 11B', time: '09:20' },
+  { id: 3, action: 'Đã gửi thông báo phụ huynh', owner: 'Lớp 9C', time: '10:15' },
 ]
 
 function DashboardPage() {
@@ -21,11 +21,11 @@ function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Dashboard</h1>
-          <p className="mt-1 text-sm text-brand-muted">Overview of school operations.</p>
+          <h1 className="text-2xl font-bold text-brand-text">Tổng quan</h1>
+          <p className="mt-1 text-sm text-brand-muted">Theo dõi nhanh tình hình học sinh và lớp học.</p>
         </div>
-        <Button as={Link} to="/students/create">
-          Add student
+        <Button as={Link} to="/hoc-sinh/them">
+          Thêm học sinh
         </Button>
       </div>
 
@@ -47,16 +47,16 @@ function DashboardPage() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-brand-text">Recent activity</h2>
-          <Link className="text-sm font-semibold text-brand-teal-dark" to="/notifications">
-            View all
+          <h2 className="text-lg font-semibold text-brand-text">Hoạt động gần đây</h2>
+          <Link className="text-sm font-semibold text-brand-teal-dark" to="/thong-bao">
+            Xem tất cả
           </Link>
         </div>
         <Table
           columns={[
-            { header: 'Action', key: 'action' },
-            { header: 'Owner', key: 'owner' },
-            { header: 'Time', key: 'time' },
+            { header: 'Hoạt động', key: 'action' },
+            { header: 'Đối tượng', key: 'owner' },
+            { header: 'Thời gian', key: 'time' },
           ]}
           data={activities}
         />

@@ -10,15 +10,15 @@ function ScoreReportPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Score report</h1>
-        <p className="mt-1 text-sm text-brand-muted">Class-level academic summary.</p>
+        <h1 className="text-2xl font-bold text-brand-text">Báo cáo điểm số</h1>
+        <p className="mt-1 text-sm text-brand-muted">Tổng hợp kết quả học tập theo lớp.</p>
       </div>
       <Table
         columns={[
-          { header: 'Class', key: 'className' },
-          { header: 'Excellent', key: 'excellent' },
-          { header: 'Good', key: 'good' },
-          { header: 'Needs support', key: 'support' },
+          { header: 'Lớp', key: 'className' },
+          { header: 'Giỏi', key: 'excellent' },
+          { header: 'Khá', key: 'good' },
+          { header: 'Cần hỗ trợ', key: 'support' },
         ]}
         data={reports}
       />

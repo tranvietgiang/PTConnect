@@ -1,12 +1,12 @@
-import { useContext } from 'react'
-import { ToastContext } from './toast-context'
+import { toast } from 'sonner'
 
 export function useToast() {
-  const context = useContext(ToastContext)
-
-  if (!context) {
-    throw new Error('useToast must be used inside ToastProvider')
+  return {
+    error: (title, message, options) =>
+      toast.error(title, { ...options, description: message }),
+    info: (title, message, options) =>
+      toast.info(title, { ...options, description: message }),
+    success: (title, message, options) =>
+      toast.success(title, { ...options, description: message }),
   }
-
-  return context
 }

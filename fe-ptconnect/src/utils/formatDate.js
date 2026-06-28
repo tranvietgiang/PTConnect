@@ -1,7 +1,7 @@
 export function formatDate(value) {
   if (!value) return ''
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
