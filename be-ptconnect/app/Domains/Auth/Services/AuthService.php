@@ -20,14 +20,26 @@ class AuthService
 
     public function login(array $credentials): array
     {
-        $email = new Email($credentials['email']);
-        $user = $this->authRepository->findUserByEmail($email->value());
+        $identifier = trim((string) ($credentials['email'] ?? $credentials['username'] ?? ''));
+        $user = $this->findUserByIdentifier($identifier);
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw new InvalidCredentialsException();
         }
 
-        $refreshToken = $this->refreshTokenService->createRefreshToken($user);
+        if (array_key_exists('is_active', $user->getAttributes()) && ! $user->is_active) {
+            throw new InvalidCredentialsException();
+        }
+
+        $refreshTtl = ! empty($credentials['remember_me'])
+            ? (int) env('JWT_REMEMBER_TTL', 43200)
+            : null;
+
+        $refreshToken = $this->refreshTokenService->createRefreshToken($user, $refreshTtl);
+
+        if (array_key_exists('last_login_at', $user->getAttributes())) {
+            $user->forceFill(['last_login_at' => now()])->save();
+        }
 
         return [
             'user' => $this->serializeUser($user),
@@ -38,7 +50,7 @@ class AuthService
         ];
     }
 
-    public function refresh(string $refreshToken): array
+    public function refresh(string $refreshToken, bool $includeUser = false, ?int $refreshTtl = null): array
     {
         $storedToken = $this->refreshTokenService->validateRefreshToken($refreshToken);
         $user = $storedToken->user;
@@ -47,14 +59,20 @@ class AuthService
             throw new UnauthorizedException('User not found.');
         }
 
-        $newRefreshToken = $this->refreshTokenService->rotateRefreshToken($refreshToken, $user);
+        $newRefreshToken = $this->refreshTokenService->rotateRefreshToken($refreshToken, $user, $refreshTtl);
 
-        return [
+        $data = [
             'access_token' => $this->jwtService->generateAccessToken($user),
             'refresh_token' => $newRefreshToken['refresh_token'],
             'token_type' => 'Bearer',
             'expires_in' => $this->jwtService->accessTtlSeconds(),
         ];
+
+        if ($includeUser) {
+            $data['user'] = $this->serializeUser($user);
+        }
+
+        return $data;
     }
 
     public function logout(string $refreshToken): void
@@ -73,12 +91,32 @@ class AuthService
         return $this->serializeUser($user);
     }
 
+    public function meFromAccessToken(string $accessToken): array
+    {
+        $payload = $this->jwtService->decodeToken($accessToken);
+        $userId = (int) ($payload->sub ?? 0);
+
+        return $this->me($userId);
+    }
+
+    private function findUserByIdentifier(string $identifier)
+    {
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            $email = new Email($identifier);
+
+            return $this->authRepository->findUserByEmail($email->value());
+        }
+
+        return $this->authRepository->findUserByUsername($identifier);
+    }
+
     private function serializeUser($user): array
     {
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'username' => $user->username,
             'role' => $user->role,
         ];
     }

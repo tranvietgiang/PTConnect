@@ -10,9 +10,9 @@ function Header({ onMenuClick }) {
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
         <Button
           aria-label="Mở menu"
-          className="size-11 px-0 lg:hidden"
+          className="size-13 px-0 lg:hidden"
           icon={Menu}
-          iconClassName="size-10"
+          iconClassName="!size-11"
           onClick={onMenuClick}
           variant="ghost"
         />
@@ -23,9 +23,9 @@ function Header({ onMenuClick }) {
         <div className="ml-auto flex items-center gap-2">
           <Button
             aria-label="Thông báo"
-            className="size-11 px-0"
+            className="size-13 px-0"
             icon={Bell}
-            iconClassName="size-10"
+            iconClassName="!size-11"
             variant="ghost"
           />
           <div className="hidden text-right sm:block">
@@ -36,9 +36,9 @@ function Header({ onMenuClick }) {
           </div>
           <Button
             aria-label="Đăng xuất"
-            className="size-11 px-0"
+            className="size-12 px-0"
             icon={LogOut}
-            iconClassName="size-10"
+            iconClassName="!size-11"
             onClick={logout}
             variant="secondary"
           />

@@ -8,10 +8,32 @@ import {
 } from '../utils/tokenStorage'
 import { emitToast } from '../utils/toastEvents'
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://192.168.33.12:8000/api'
+function resolveBaseURL() {
+  const configuredURL = import.meta.env.VITE_API_URL
+  const fallbackURL = `${window.location.protocol}//${window.location.hostname}:8000/api`
+
+  if (!configuredURL) return fallbackURL
+
+  try {
+    const url = new URL(configuredURL)
+    const devHosts = ['localhost', '127.0.0.1', '192.168.33.12']
+
+    if (devHosts.includes(url.hostname) && window.location.hostname !== url.hostname) {
+      url.hostname = window.location.hostname
+      return url.toString().replace(/\/$/, '')
+    }
+  } catch {
+    return fallbackURL
+  }
+
+  return configuredURL
+}
+
+const baseURL = resolveBaseURL()
 
 const axiosClient = axios.create({
   baseURL,
+  withCredentials: true,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -20,6 +42,7 @@ const axiosClient = axios.create({
 
 const refreshClient = axios.create({
   baseURL,
+  withCredentials: true,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -46,6 +69,18 @@ function stopLoading(config) {
   }
 }
 
+function shouldSkipRefresh(config) {
+  const url = config?.url || ''
+
+  return (
+    config?.skipAuthRefresh ||
+    url.includes('/auth/login') ||
+    url.includes('/auth/logout') ||
+    url.includes('/auth/refresh') ||
+    url.endsWith('/me')
+  )
+}
+
 axiosClient.interceptors.request.use((config) => {
   startLoading(config)
 
@@ -61,7 +96,6 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => {
     stopLoading(response.config)
-
     return response.data
   },
   async (error) => {
@@ -71,35 +105,29 @@ axiosClient.interceptors.response.use(
     if (
       error.response?.status !== 401 ||
       originalRequest?._retry ||
-      originalRequest?.url?.includes('/auth/refresh')
+      shouldSkipRefresh(originalRequest)
     ) {
-      return Promise.reject(error.response?.data || error)
-    }
-
-    const refreshToken = getRefreshToken()
-
-    if (!refreshToken) {
-      clearTokens()
-      emitToast({
-        title: 'Phiên đăng nhập đã hết hạn',
-        message: 'Vui lòng đăng nhập lại.',
-        type: 'error',
-      })
-      window.location.assign('/dang-nhap')
       return Promise.reject(error.response?.data || error)
     }
 
     originalRequest._retry = true
 
     try {
+      const refreshToken = getRefreshToken()
+      const payload = refreshToken ? { refresh_token: refreshToken } : {}
+
       refreshPromise =
         refreshPromise ||
-        refreshClient.post('/auth/refresh', { refresh_token: refreshToken })
+        refreshClient.post('/auth/refresh', payload, {
+          showLoading: false,
+          withCredentials: true,
+        })
 
       const response = await refreshPromise
       const tokens = response.data.data
 
       setTokens(tokens.access_token, tokens.refresh_token)
+      originalRequest.headers = originalRequest.headers || {}
       originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`
 
       return axiosClient(originalRequest)
@@ -110,7 +138,6 @@ axiosClient.interceptors.response.use(
         message: 'Vui lòng đăng nhập lại.',
         type: 'error',
       })
-      window.location.assign('/dang-nhap')
       return Promise.reject(refreshError.response?.data || refreshError)
     } finally {
       refreshPromise = null

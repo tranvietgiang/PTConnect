@@ -23,14 +23,14 @@ class RefreshTokenService
     /**
      * @return array{refresh_token:string, model:RefreshToken}
      */
-    public function createRefreshToken(User $user): array
+    public function createRefreshToken(User $user, ?int $ttlMinutes = null): array
     {
         $plainToken = $this->generateRefreshToken();
         $model = RefreshToken::query()->create([
             'user_id' => $user->id,
             'token_hash' => $this->hashRefreshToken($plainToken),
             'jti' => (string) Str::uuid(),
-            'expires_at' => CarbonImmutable::now()->addMinutes((int) env('JWT_REFRESH_TTL', 10080)),
+            'expires_at' => CarbonImmutable::now()->addMinutes($ttlMinutes ?? (int) env('JWT_REFRESH_TTL', 10080)),
         ]);
 
         return [
@@ -61,10 +61,10 @@ class RefreshTokenService
     /**
      * @return array{refresh_token:string, model:RefreshToken}
      */
-    public function rotateRefreshToken(string $oldRefreshToken, User $user): array
+    public function rotateRefreshToken(string $oldRefreshToken, User $user, ?int $ttlMinutes = null): array
     {
         $this->revokeRefreshToken($oldRefreshToken);
 
-        return $this->createRefreshToken($user);
+        return $this->createRefreshToken($user, $ttlMinutes);
     }
 }
