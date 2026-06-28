@@ -23,15 +23,6 @@ class ParentProfileTest extends TestCase
 
         $this->user = User::factory()->create(['role' => 'parent']);
 
-        $this->parentProfile = ParentProfile::create([
-            'user_id' => $this->user->id,
-            'full_name' => 'John Doe',
-            'email' => 'john@example.com',
-            'phone' => '0123456789',
-            'relationship' => 'father',
-            'address' => '123 Main St',
-        ]);
-
         $academicYear = AcademicYear::create([
             'name' => '2025-2026',
             'start_date' => '2025-09-01',
@@ -52,6 +43,16 @@ class ParentProfileTest extends TestCase
             'full_name' => 'Child Student',
             'status' => 'studying',
         ]);
+
+        $this->parentProfile = ParentProfile::create([
+            'user_id' => $this->user->id,
+            'student_id' => $this->student->id,
+            'full_name' => 'John Doe',
+            'email' => 'john@example.com',
+            'phone' => '0123456789',
+            'relationship' => 'father',
+            'address' => '123 Main St',
+        ]);
     }
 
     public function test_parent_profile_has_fillable_attributes(): void
@@ -60,6 +61,7 @@ class ParentProfileTest extends TestCase
 
         $this->assertEquals([
             'user_id',
+            'student_id',
             'full_name',
             'email',
             'phone',
@@ -74,12 +76,10 @@ class ParentProfileTest extends TestCase
         $this->assertEquals($this->user->id, $this->parentProfile->user->id);
     }
 
-    public function test_parent_profile_belongs_to_many_students(): void
+    public function test_parent_profile_belongs_to_student(): void
     {
-        $this->parentProfile->students()->attach($this->student->id, ['is_primary' => true]);
-
-        $this->assertTrue($this->parentProfile->students()->exists());
-        $this->assertCount(1, $this->parentProfile->students);
+        $this->assertTrue($this->parentProfile->student()->exists());
+        $this->assertEquals($this->student->id, $this->parentProfile->student->id);
     }
 
     public function test_parent_profile_has_many_notifications(): void

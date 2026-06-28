@@ -15,7 +15,6 @@ class UserTest extends TestCase
     public function test_user_can_be_created(): void
     {
         $user = User::factory()->create([
-            'name' => 'Test User',
             'email' => 'test@example.com',
             'username' => 'testuser',
             'role' => 'teacher',
@@ -35,13 +34,11 @@ class UserTest extends TestCase
         $user = new User();
 
         $this->assertEquals([
-            'name',
             'email',
             'username',
+            'email_verified_at',
             'password',
             'role',
-            'phone',
-            'avatar',
             'is_active',
             'last_login_at',
         ], $user->getFillable());
@@ -89,9 +86,28 @@ class UserTest extends TestCase
     public function test_user_has_parent_profile_relation(): void
     {
         $user = User::factory()->create(['role' => 'parent']);
+        $academicYear = AcademicYear::create([
+            'name' => '2025-2026',
+            'start_date' => '2025-09-01',
+            'end_date' => '2026-05-31',
+            'is_active' => true,
+        ]);
+        $classroom = Classroom::create([
+            'academic_year_id' => $academicYear->id,
+            'name' => '10A1',
+            'grade_level' => 10,
+            'is_active' => true,
+        ]);
+        $student = \App\Models\Student::create([
+            'classroom_id' => $classroom->id,
+            'student_code' => 'STU001',
+            'full_name' => 'Child',
+            'status' => 'studying',
+        ]);
 
         ParentProfile::create([
             'user_id' => $user->id,
+            'student_id' => $student->id,
             'full_name' => 'Parent Name',
             'email' => 'parent@example.com',
             'phone' => '0123456789',
@@ -154,37 +170,6 @@ class UserTest extends TestCase
         ]);
 
         $this->assertCount(1, $user->attendanceSessions);
-    }
-
-    public function test_user_has_many_exams(): void
-    {
-        $teacher = \App\Models\User::factory()->create(['role' => 'teacher']);
-        $academicYear = \App\Models\AcademicYear::create([
-            'name' => '2025-2026',
-            'start_date' => '2025-09-01',
-            'end_date' => '2026-05-31',
-            'is_active' => true,
-        ]);
-        $classroom = \App\Models\Classroom::create([
-            'academic_year_id' => $academicYear->id,
-            'name' => '10A1',
-            'grade_level' => 10,
-            'is_active' => true,
-        ]);
-        \App\Models\Subject::create(['name' => 'Math', 'code' => 'MATH', 'is_active' => true]);
-
-        \App\Models\Exam::create([
-            'classroom_id' => $classroom->id,
-            'subject_id' => 1,
-            'teacher_id' => $teacher->id,
-            'title' => 'Final',
-            'exam_type' => 'final',
-            'exam_date' => '2025-12-01',
-            'max_score' => 10.00,
-            'is_published' => true,
-        ]);
-
-        $this->assertCount(1, $teacher->exams);
     }
 
     public function test_user_has_many_sent_notifications(): void

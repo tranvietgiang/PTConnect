@@ -6,8 +6,25 @@ import Input from '../../components/common/Input'
 import Loading from '../../components/common/Loading'
 import { useAuth } from '../../store/useAuth'
 import { useToast } from '../../store/useToast'
+import { getDefaultRouteByRole, getSafeRedirectPath } from '../../utils/roleRedirect'
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function buildLoginPayload(form) {
+  const identifier = form.identifier.trim()
+  const payload = {
+    password: form.password,
+    remember_me: form.remember_me,
+  }
+
+  if (emailPattern.test(identifier)) {
+    payload.email = identifier
+  } else {
+    payload.username = identifier
+  }
+
+  return payload
+}
 
 function LoginPage() {
   const { checkingAuth, isAuthenticated, login, user } = useAuth()
@@ -15,7 +32,7 @@ function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [form, setForm] = useState({
-    email: '',
+    identifier: '',
     password: '',
     remember_me: false,
   })
@@ -27,17 +44,15 @@ function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate replace to={user?.role === 'parent' ? '/phu-huynh' : '/tong-quan'} />
+    return <Navigate replace to={getDefaultRouteByRole(user?.role)} />
   }
 
   const validateForm = () => {
     const nextErrors = {}
-    const email = form.email.trim()
+    const identifier = form.identifier.trim()
 
-    if (!email) {
-      nextErrors.email = 'Vui lòng nhập email.'
-    } else if (!emailPattern.test(email)) {
-      nextErrors.email = 'Email không đúng định dạng.'
+    if (!identifier) {
+      nextErrors.identifier = 'Vui lòng nhập email hoặc username.'
     }
 
     if (!form.password.trim()) {
@@ -47,7 +62,7 @@ function LoginPage() {
     setErrors(nextErrors)
 
     if (Object.keys(nextErrors).length > 0) {
-      toast.error('Thiếu thông tin đăng nhập', 'Vui lòng nhập email và mật khẩu hợp lệ.')
+      toast.error('Thiếu thông tin đăng nhập', 'Vui lòng nhập email/username và mật khẩu.')
       return false
     }
 
@@ -62,14 +77,13 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      await login({
-        ...form,
-        email: form.email.trim(),
-      })
+      const response = await login(buildLoginPayload(form))
+      const role = response.data?.user?.role
+
       toast.success('Đăng nhập thành công', 'Hệ thống đã ghi nhớ phiên đăng nhập theo lựa chọn của bạn.')
-      navigate(location.state?.from?.pathname || '/tong-quan', { replace: true })
+      navigate(getSafeRedirectPath(role, location.state?.from?.pathname), { replace: true })
     } catch (error) {
-      toast.error('Đăng nhập thất bại', error.message || 'Vui lòng kiểm tra email và mật khẩu.')
+      toast.error('Đăng nhập thất bại', error.message || 'Vui lòng kiểm tra email/username và mật khẩu.')
     } finally {
       setLoading(false)
     }
@@ -83,18 +97,18 @@ function LoginPage() {
     >
       <div className="space-y-4">
         <Input
-          autoComplete="email"
-          error={errors.email}
-          id="email"
-          label="Email"
-          name="email"
+          autoComplete="username"
+          error={errors.identifier}
+          id="identifier"
+          label="Email hoặc username"
+          name="username"
           onChange={(event) => {
-            setForm({ ...form, email: event.target.value })
-            setErrors({ ...errors, email: undefined })
+            setForm({ ...form, identifier: event.target.value })
+            setErrors({ ...errors, identifier: undefined })
           }}
-          placeholder="admin@ptconnect.test"
-          type="email"
-          value={form.email}
+          placeholder="admin hoặc admin@ptconnect.test"
+          type="text"
+          value={form.identifier}
         />
         <Input
           autoComplete="current-password"

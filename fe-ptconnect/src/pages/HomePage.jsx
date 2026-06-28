@@ -2,12 +2,18 @@ import { ArrowRight } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import { useAuth } from '../store/useAuth'
+import Loading from '../components/common/Loading'
+import { getDefaultRouteByRole } from '../utils/roleRedirect'
 
 function HomePage() {
-  const { isAuthenticated } = useAuth()
+  const { checkingAuth, isAuthenticated, user } = useAuth()
+
+  if (checkingAuth) {
+    return <Loading label="Đang kiểm tra đăng nhập" />
+  }
 
   if (isAuthenticated) {
-    return <Navigate replace to="/tong-quan" />
+    return <Navigate replace to={getDefaultRouteByRole(user?.role)} />
   }
 
   return (

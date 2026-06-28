@@ -8,6 +8,6 @@ class InvalidCredentialsException extends RuntimeException
 {
     public function __construct()
     {
-        parent::__construct('Invalid email or password.');
+        parent::__construct('Thông tin đăng nhập không đúng.');
     }
 }

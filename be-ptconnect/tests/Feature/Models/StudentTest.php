@@ -59,6 +59,7 @@ class StudentTest extends TestCase
             'gender',
             'date_of_birth',
             'phone',
+            'avatar',
             'address',
             'status',
         ], $student->getFillable());
@@ -77,7 +78,7 @@ class StudentTest extends TestCase
         $this->assertSame($this->classroom->id, $student->classroom->id);
     }
 
-    public function test_student_belongs_to_many_parents(): void
+    public function test_student_has_many_parents(): void
     {
         $student = Student::create([
             'classroom_id' => $this->classroom->id,
@@ -88,15 +89,13 @@ class StudentTest extends TestCase
 
         $parentUser = User::factory()->create(['role' => 'parent']);
 
-        $parent = ParentProfile::create([
+        $student->parents()->create([
             'user_id' => $parentUser->id,
             'full_name' => 'Parent C',
             'email' => 'parentc@example.com',
             'phone' => '0123456789',
             'relationship' => 'mother',
         ]);
-
-        $student->parents()->attach($parent, ['is_primary' => true]);
 
         $this->assertCount(1, $student->parents);
     }
@@ -158,36 +157,4 @@ class StudentTest extends TestCase
         $this->assertCount(2, $student->attendanceRecords);
     }
 
-    public function test_student_has_many_scores(): void
-    {
-        $student = \App\Models\Student::create([
-            'classroom_id' => $this->classroom->id,
-            'student_code' => 'STU011',
-            'full_name' => 'Score Student',
-            'status' => 'studying',
-        ]);
-
-        \App\Models\Subject::create(['name' => 'Math', 'code' => 'MATH', 'is_active' => true]);
-        $teacher = \App\Models\User::factory()->create(['role' => 'teacher']);
-
-        $exam = \App\Models\Exam::create([
-            'classroom_id' => $this->classroom->id,
-            'subject_id' => 1,
-            'teacher_id' => $teacher->id,
-            'title' => 'Final',
-            'exam_type' => 'final',
-            'exam_date' => '2025-12-01',
-            'max_score' => 10.00,
-            'is_published' => true,
-        ]);
-
-        \App\Models\Score::create([
-            'exam_id' => $exam->id,
-            'student_id' => $student->id,
-            'score' => 8.50,
-            'comment' => 'Good',
-        ]);
-
-        $this->assertCount(1, $student->scores);
-    }
 }

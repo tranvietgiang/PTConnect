@@ -145,32 +145,4 @@ class ClassroomTest extends TestCase
         $this->assertCount(2, $classroom->attendanceSessions);
     }
 
-    public function test_classroom_has_many_exams(): void
-    {
-        $classroom = Classroom::create([
-            'academic_year_id' => $this->academicYear->id,
-            'name' => 'ExamRoom',
-            'grade_level' => 10,
-            'is_active' => true,
-        ]);
-
-        \App\Models\Subject::create([
-            'name' => 'Math',
-            'code' => 'MATH',
-            'is_active' => true,
-        ]);
-
-        \App\Models\Exam::create([
-            'classroom_id' => $classroom->id,
-            'subject_id' => 1,
-            'teacher_id' => \App\Models\User::factory()->create(['role' => 'teacher'])->id,
-            'title' => 'Midterm',
-            'exam_type' => 'midterm',
-            'exam_date' => '2025-11-01',
-            'max_score' => 10.00,
-            'is_published' => false,
-        ]);
-
-        $this->assertCount(1, $classroom->exams);
-    }
 }

@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AssignmentController;
+use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\ClassroomController;
+use App\Http\Controllers\Api\ScoreController;
 use App\Http\Controllers\Api\StudentController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,9 +27,17 @@ Route::middleware('jwt.auth')->group(function (): void {
     Route::post('/students/import', [StudentController::class, 'import'])->middleware('role:admin');
     Route::get('/students/{student}', [StudentController::class, 'show']);
 
+    Route::get('/attendance/today', [AttendanceController::class, 'today'])->middleware('role:admin,assistant');
+    Route::post('/attendance', [AttendanceController::class, 'store'])->middleware('role:admin,assistant');
+    Route::get('/attendance/history', [AttendanceController::class, 'history'])->middleware('role:admin,assistant');
+
     Route::get('/assignments', [AssignmentController::class, 'index']);
     Route::post('/assignments', [AssignmentController::class, 'store'])->middleware('role:admin,teacher');
     Route::get('/assignments/{assignment}/attachment', [AssignmentController::class, 'downloadAttachment']);
     Route::post('/assignments/{assignment}/submissions', [AssignmentController::class, 'submit'])->middleware('role:parent');
+    Route::patch('/assignment-submissions/{submission}/grade', [AssignmentController::class, 'gradeSubmission'])->middleware('role:admin,teacher');
     Route::get('/assignment-submissions/{submission}/download', [AssignmentController::class, 'downloadSubmission']);
+
+    Route::get('/scores', [ScoreController::class, 'index'])->middleware('role:admin,teacher,parent');
+    Route::get('/scores/report', [ScoreController::class, 'report'])->middleware('role:admin,teacher');
 });

@@ -26,7 +26,7 @@ function Input({
         {showPasswordToggle && type === 'password' ? (
           <button
             aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-            className="absolute inset-y-0 right-0 grid w-10 place-items-center text-brand-muted transition hover:text-brand-text"
+            className="absolute inset-y-0 right-0 grid w-10 cursor-pointer place-items-center text-brand-muted transition hover:text-brand-text"
             onClick={(event) => {
               event.preventDefault()
               setShowPassword((current) => !current)

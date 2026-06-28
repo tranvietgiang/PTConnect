@@ -12,7 +12,6 @@ use App\Models\Notification;
 use App\Models\NotificationRecipient;
 use App\Models\ParentProfile;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -21,29 +20,20 @@ use Illuminate\Support\Facades\Storage;
 
 class V1DatabaseSeeder extends Seeder
 {
-    private const MIN_STUDENTS_PER_CLASS = 60;
-    private const MAX_STUDENTS_PER_CLASS = 100;
+    private const MIN_STUDENTS_PER_CLASS = 40;
+    private const MAX_STUDENTS_PER_CLASS = 60;
 
     public function run(): void
     {
-        $admin = $this->user('admin@ptconnect.test', 'admin', 'admin', 'password');
-        $teacher = $this->user('teacher@ptconnect.test', 'teacher', 'teacher', 'password');
-        $assistant = $this->user('assistant@ptconnect.test', 'assistant', 'assistant', 'password');
+        $admin = $this->user('admin@ptconnect.test', 'admin', 'admin', '12345678');
+        $teacher = $this->user('teacher@ptconnect.test', 'teacher', 'teacher', '12345678');
+        $assistant = $this->user('assistant@ptconnect.test', 'assistant', 'assistant', '12345678');
 
         $academicYear = AcademicYear::query()->updateOrCreate(
             ['name' => '2025-2026'],
             [
                 'start_date' => '2025-08-01',
                 'end_date' => '2026-05-31',
-                'is_active' => true,
-            ],
-        );
-
-        Subject::query()->updateOrCreate(
-            ['code' => 'BIO'],
-            [
-                'name' => 'Sinh học',
-                'description' => 'Môn Sinh học cho lớp dạy thêm khối 10, 11, 12.',
                 'is_active' => true,
             ],
         );
@@ -70,8 +60,8 @@ class V1DatabaseSeeder extends Seeder
     private function seedClassrooms(AcademicYear $academicYear, User $teacher, User $assistant)
     {
         return collect([10, 11, 12])
-            ->flatMap(fn (int $grade): array => collect(range(1, 4))
-                ->map(fn (int $index): array => [
+            ->flatMap(fn(int $grade): array => collect(range(1, 4))
+                ->map(fn(int $index): array => [
                     'name' => "{$grade}A{$index}",
                     'grade_level' => $grade,
                 ])
@@ -101,8 +91,26 @@ class V1DatabaseSeeder extends Seeder
     private function seedStudentsAndParents($classrooms): void
     {
         $firstNames = [
-            'An', 'Bao', 'Chi', 'Dung', 'Giang', 'Hanh', 'Khanh', 'Lan', 'Linh', 'Minh',
-            'Nam', 'Nhi', 'Phuc', 'Quan', 'Thao', 'Trang', 'Tuan', 'Vy', 'Yen', 'Khoa',
+            'An',
+            'Bao',
+            'Chi',
+            'Dung',
+            'Giang',
+            'Hanh',
+            'Khanh',
+            'Lan',
+            'Linh',
+            'Minh',
+            'Nam',
+            'Nhi',
+            'Phuc',
+            'Quan',
+            'Thao',
+            'Trang',
+            'Tuan',
+            'Vy',
+            'Yen',
+            'Khoa',
         ];
         $lastNames = ['Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Huynh', 'Phan', 'Vu', 'Dang', 'Bui'];
 
@@ -113,9 +121,9 @@ class V1DatabaseSeeder extends Seeder
 
             for ($number = 1; $number <= $studentsPerClass; $number++) {
                 $studentCode = sprintf('HS%02d%02d%03d', $grade, $classIndex, $number);
-                $fullName = $lastNames[($number + $classIndex) % count($lastNames)].' '
-                    .$firstNames[($number - 1) % count($firstNames)].' '
-                    .sprintf('%02d', $number);
+                $fullName = $lastNames[($number + $classIndex) % count($lastNames)] . ' '
+                    . $firstNames[($number - 1) % count($firstNames)] . ' '
+                    . sprintf('%02d', $number);
 
                 $student = Student::query()->updateOrCreate(
                     ['student_code' => $studentCode],
@@ -133,7 +141,7 @@ class V1DatabaseSeeder extends Seeder
                 $parentUser = User::query()->updateOrCreate(
                     ['username' => $studentCode],
                     [
-                        'email' => strtolower($studentCode).'@parent.ptconnect.test',
+                        'email' => strtolower($studentCode) . '@parent.ptconnect.test',
                         'password' => Hash::make('12345678'),
                         'role' => 'parent',
                         'is_active' => true,
@@ -144,8 +152,8 @@ class V1DatabaseSeeder extends Seeder
                     ['user_id' => $parentUser->id],
                     [
                         'student_id' => $student->id,
-                        'full_name' => 'Phụ huynh '.$fullName,
-                        'email' => strtolower($studentCode).'@parent.ptconnect.test',
+                        'full_name' => 'Phụ huynh ' . $fullName,
+                        'email' => strtolower($studentCode) . '@parent.ptconnect.test',
                         'phone' => sprintf('08%08d', ($grade * 100000) + ($classIndex * 1000) + $number),
                         'relationship' => $number % 2 === 0 ? 'mother' : 'father',
                         'address' => "Khu vực lớp {$classroomName}",

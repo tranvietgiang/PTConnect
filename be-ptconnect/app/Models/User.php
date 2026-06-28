@@ -78,11 +78,6 @@ class User extends Authenticatable
         return $this->hasMany(AttendanceSession::class, 'created_by');
     }
 
-    public function exams(): HasMany
-    {
-        return $this->hasMany(Exam::class, 'teacher_id');
-    }
-
     public function sentNotifications(): HasMany
     {
         return $this->hasMany(Notification::class, 'sender_id');

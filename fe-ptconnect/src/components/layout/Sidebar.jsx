@@ -9,35 +9,78 @@ import {
   ShieldCheck,
   Users,
   X,
-} from 'lucide-react'
-import { NavLink } from 'react-router-dom'
-import { useAuth } from '../../store/useAuth'
-import Button from '../common/Button'
+} from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../../store/useAuth";
+import Button from "../common/Button";
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Tổng quan', roles: ['admin', 'teacher', 'assistant'], to: '/tong-quan' },
-  { icon: Users, label: 'Học sinh', roles: ['admin', 'teacher', 'assistant'], to: '/hoc-sinh' },
-  { icon: BookOpen, label: 'Lớp học', roles: ['admin', 'teacher', 'assistant'], to: '/lop-hoc' },
-  { icon: CalendarCheck, label: 'Điểm danh', roles: ['admin', 'teacher', 'assistant'], to: '/diem-danh' },
-  { icon: GraduationCap, label: 'Điểm số', roles: ['admin', 'teacher'], to: '/diem-so' },
-  { icon: ClipboardList, label: 'Bài tập', roles: ['admin', 'teacher', 'parent'], to: '/bai-tap' },
-  { icon: Bell, label: 'Thông báo', roles: ['admin', 'teacher'], to: '/thong-bao' },
-  { icon: Home, label: 'Phụ huynh', roles: ['parent'], to: '/phu-huynh' },
-]
+  {
+    icon: LayoutDashboard,
+    label: "Tổng quan",
+    roles: ["admin"],
+    to: "/tong-quan",
+  },
+  {
+    icon: Users,
+    label: "Học sinh",
+    roles: ["admin", "teacher", "assistant"],
+    to: "/hoc-sinh",
+  },
+  {
+    icon: BookOpen,
+    label: "Lớp học",
+    roles: ["admin", "teacher", "assistant"],
+    to: "/lop-hoc",
+  },
+  {
+    icon: CalendarCheck,
+    label: "Điểm danh",
+    roles: ["admin", "assistant"],
+    to: "/diem-danh",
+  },
+  {
+    icon: GraduationCap,
+    label: "Điểm số",
+    roles: ["admin", "teacher"],
+    to: "/diem-so",
+  },
+  {
+    icon: GraduationCap,
+    label: "Điểm số",
+    roles: ["parent"],
+    to: "/phu-huynh/diem-so",
+  },
+  {
+    icon: ClipboardList,
+    label: "Bài tập",
+    roles: ["admin", "teacher", "parent"],
+    to: "/bai-tap",
+  },
+  {
+    icon: Bell,
+    label: "Thông báo",
+    roles: ["admin", "teacher"],
+    to: "/thong-bao",
+  },
+  { icon: Home, label: "Thông tin", roles: ["parent"], to: "/phu-huynh" },
+];
 
 function Sidebar({ isOpen, onClose }) {
-  const { user } = useAuth()
-  const visibleItems = navItems.filter((item) => item.roles.includes(user?.role))
+  const { user } = useAuth();
+  const visibleItems = navItems.filter((item) =>
+    item.roles.includes(user?.role),
+  );
 
   return (
     <>
       <div
-        className={`fixed inset-0 z-30 bg-brand-text/40 transition lg:hidden ${isOpen ? 'block' : 'hidden'}`}
+        className={`fixed inset-0 z-30 bg-brand-text/40 transition lg:hidden ${isOpen ? "block" : "hidden"}`}
         onClick={onClose}
       />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-brand-border bg-brand-white transition-transform lg:static lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-16 items-center gap-3 border-b border-brand-border px-5">
@@ -59,15 +102,15 @@ function Sidebar({ isOpen, onClose }) {
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {visibleItems.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
 
             return (
               <NavLink
                 className={({ isActive }) =>
                   `flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition ${
                     isActive
-                      ? 'bg-brand-teal-soft text-brand-teal-dark'
-                      : 'text-brand-muted hover:bg-brand-bg hover:text-brand-text'
+                      ? "bg-brand-teal-soft text-brand-teal-dark"
+                      : "text-brand-muted hover:bg-brand-bg hover:text-brand-text"
                   }`
                 }
                 key={item.to}
@@ -77,7 +120,7 @@ function Sidebar({ isOpen, onClose }) {
                 <Icon aria-hidden="true" className="size-5" />
                 {item.label}
               </NavLink>
-            )
+            );
           })}
         </nav>
         <div className="border-t border-brand-border p-4 text-xs text-brand-muted">
@@ -85,7 +128,7 @@ function Sidebar({ isOpen, onClose }) {
         </div>
       </aside>
     </>
-  )
+  );
 }
 
-export default Sidebar
+export default Sidebar;
