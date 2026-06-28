@@ -22,7 +22,9 @@ function StudentCreatePage() {
     full_name: '',
     student_code: '',
     classroom_id: '',
+    phone: '',
     date_of_birth: '',
+    avatar: null,
     address: '',
   })
   const [importForm, setImportForm] = useState({
@@ -86,14 +88,16 @@ function StudentCreatePage() {
     setSaving(true)
 
     try {
-      await studentApi.create({
-        ...form,
-        full_name: form.full_name.trim(),
-        student_code: form.student_code.trim(),
-        classroom_id: Number(form.classroom_id),
-        date_of_birth: form.date_of_birth || null,
-        address: form.address.trim() || null,
-      })
+      const payload = new FormData()
+      payload.append('full_name', form.full_name.trim())
+      payload.append('student_code', form.student_code.trim())
+      payload.append('classroom_id', Number(form.classroom_id))
+      if (form.phone.trim()) payload.append('phone', form.phone.trim())
+      if (form.date_of_birth) payload.append('date_of_birth', form.date_of_birth)
+      if (form.avatar) payload.append('avatar', form.avatar)
+      if (form.address.trim()) payload.append('address', form.address.trim())
+
+      await studentApi.create(payload)
       toast.success('Đã lưu học sinh', 'Hồ sơ học sinh mới đã được tạo.')
       navigate('/hoc-sinh', { replace: true })
     } catch (error) {
@@ -185,6 +189,20 @@ function StudentCreatePage() {
                 value={form.date_of_birth}
               />
               <Input
+                id="student-phone"
+                label="Sá»‘ Ä‘iá»‡n thoáº¡i"
+                onChange={(event) => updateForm('phone', event.target.value)}
+                placeholder="0901000001"
+                value={form.phone}
+              />
+              <Input
+                accept="image/png,image/jpeg,image/webp"
+                id="student-avatar"
+                label="áº¢nh Ä‘áº¡i diá»‡n"
+                onChange={(event) => updateForm('avatar', event.target.files?.[0] || null)}
+                type="file"
+              />
+              <Input
                 id="student-address"
                 label="Địa chỉ"
                 onChange={(event) => updateForm('address', event.target.value)}
@@ -203,7 +221,7 @@ function StudentCreatePage() {
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-brand-text">Import danh sách học sinh bằng Excel</h2>
               <p className="mt-1 text-sm text-brand-muted">
-                File hỗ trợ .xlsx hoặc .csv. Các cột nên có: student_code, full_name, class_name, date_of_birth, student_phone, address.
+                File hỗ trợ .xlsx hoặc .csv. Các cột nên có: student_code, full_name, class_name, date_of_birth, student_phone, avatar, address.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

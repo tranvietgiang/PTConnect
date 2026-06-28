@@ -11,12 +11,15 @@ return new class extends Migration
         Schema::create('parents', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();
+            $table->foreignId('student_id')->constrained()->cascadeOnDelete();
             $table->string('full_name');
             $table->string('email')->index();
             $table->string('phone')->nullable()->index();
             $table->string('relationship');
             $table->string('address')->nullable();
             $table->timestamps();
+
+            $table->index(['student_id', 'relationship']);
         });
     }
 

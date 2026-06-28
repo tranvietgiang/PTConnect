@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
+use App\Models\ParentProfile;
 use App\Models\Student;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use ZipArchive;
 
@@ -15,8 +17,19 @@ class StudentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $students = Student::query()
-            ->with('classroom:id,name,grade_level')
+        $user = $request->attributes->get('auth_user');
+        $query = Student::query()
+            ->with('classroom:id,name,grade_level');
+
+        if ($user->role === 'parent') {
+            $query->whereIn('id', $this->parentStudentIds($user->id));
+        } elseif (in_array($user->role, ['teacher', 'assistant'], true)) {
+            $query->whereIn('classroom_id', $this->assignedClassroomIds($user->id));
+        } elseif ($user->role !== 'admin') {
+            return $this->error('Forbidden.', 403);
+        }
+
+        $students = $query
             ->when($request->filled('classroom_id'), fn ($query) => $query->where('classroom_id', $request->integer('classroom_id')))
             ->when($request->filled('keyword'), function ($query) use ($request): void {
                 $keyword = trim((string) $request->input('keyword'));
@@ -35,19 +48,31 @@ class StudentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($request->attributes->get('auth_user')?->role !== 'admin') {
+            return $this->error('Forbidden.', 403);
+        }
+
         $validated = $request->validate([
             'classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')],
             'student_code' => ['required', 'string', 'max:50', Rule::unique('students', 'student_code')],
             'full_name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
             'date_of_birth' => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:255'],
+            'avatar' => ['nullable', 'file', 'max:2048', 'mimes:jpg,jpeg,png,webp'],
         ]);
+
+        $avatarPath = $request->hasFile('avatar')
+            ? $request->file('avatar')->store('students/avatars', 'public')
+            : null;
 
         $student = Student::query()->create([
             'classroom_id' => $validated['classroom_id'],
             'student_code' => trim($validated['student_code']),
             'full_name' => trim($validated['full_name']),
+            'phone' => trim((string) ($validated['phone'] ?? '')) ?: null,
             'date_of_birth' => $validated['date_of_birth'] ?? null,
+            'avatar' => $avatarPath,
             'address' => $validated['address'] ?? null,
             'status' => 'studying',
         ]);
@@ -57,11 +82,19 @@ class StudentController extends Controller
 
     public function show(Student $student): JsonResponse
     {
+        if (! $this->canAccessStudent(request(), $student)) {
+            return $this->error('Forbidden.', 403);
+        }
+
         return $this->success('Student retrieved.', $this->serialize($student->load('classroom')));
     }
 
     public function import(Request $request): JsonResponse
     {
+        if ($request->attributes->get('auth_user')?->role !== 'admin') {
+            return $this->error('Forbidden.', 403);
+        }
+
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:10240', 'mimes:xlsx,csv,txt'],
             'classroom_id' => ['nullable', 'integer', Rule::exists('classrooms', 'id')],
@@ -103,6 +136,7 @@ class StudentController extends Controller
                 'full_name' => $fullName,
                 'date_of_birth' => $this->normalizeDate($row['date_of_birth'] ?? null),
                 'phone' => trim((string) ($row['student_phone'] ?? '')) ?: null,
+                'avatar' => trim((string) ($row['avatar'] ?? '')) ?: null,
                 'address' => trim((string) ($row['address'] ?? '')) ?: null,
                 'status' => trim((string) ($row['status'] ?? '')) ?: 'studying',
             ]);
@@ -126,6 +160,9 @@ class StudentController extends Controller
             'classroom_id' => $student->classroom_id,
             'class_name' => $student->classroom?->name,
             'date_of_birth' => $student->date_of_birth?->toDateString(),
+            'phone' => $student->phone,
+            'avatar' => $student->avatar,
+            'avatar_url' => $student->avatar ? Storage::disk('public')->url($student->avatar) : null,
             'address' => $student->address,
             'status' => $student->status,
         ];
@@ -137,6 +174,54 @@ class StudentController extends Controller
             'success' => true,
             'message' => $message,
             'data' => $data,
+        ], $status);
+    }
+
+    private function canAccessStudent(Request $request, Student $student): bool
+    {
+        $user = $request->attributes->get('auth_user');
+
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if (in_array($user->role, ['teacher', 'assistant'], true)) {
+            return in_array($student->classroom_id, $this->assignedClassroomIds($user->id), true);
+        }
+
+        if ($user->role === 'parent') {
+            return in_array($student->id, $this->parentStudentIds($user->id), true);
+        }
+
+        return false;
+    }
+
+    private function assignedClassroomIds(int $userId): array
+    {
+        return Classroom::query()
+            ->whereHas('users', fn ($query) => $query->where('users.id', $userId))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    private function parentStudentIds(int $userId): array
+    {
+        return ParentProfile::query()
+            ->where('user_id', $userId)
+            ->pluck('student_id')
+            ->unique()
+            ->values()
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    private function error(string $message, int $status): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'errors' => null,
         ], $status);
     }
 
@@ -283,6 +368,7 @@ class StudentController extends Controller
             'lop', 'lớp', 'class', 'class_name', 'ten_lop', 'tên_lớp' => 'class_name',
             'ngay_sinh', 'ngày_sinh', 'date_of_birth', 'dob' => 'date_of_birth',
             'sdt_hoc_sinh', 'sđt_học_sinh', 'student_phone', 'phone' => 'student_phone',
+            'anh_dai_dien', 'ảnh_đại_diện', 'avatar' => 'avatar',
             'dia_chi', 'địa_chỉ', 'address' => 'address',
             'trang_thai', 'trạng_thái', 'status' => 'status',
             default => $normalized,

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ParentProfile extends Model
@@ -13,6 +12,7 @@ class ParentProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'student_id',
         'full_name',
         'email',
         'phone',
@@ -25,11 +25,9 @@ class ParentProfile extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function students(): BelongsToMany
+    public function student(): BelongsTo
     {
-        return $this->belongsToMany(Student::class, 'student_parent', 'parent_id', 'student_id')
-            ->withPivot('is_primary')
-            ->withTimestamps();
+        return $this->belongsTo(Student::class);
     }
 
     public function notifications(): HasMany

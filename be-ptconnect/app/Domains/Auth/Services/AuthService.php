@@ -112,9 +112,13 @@ class AuthService
 
     private function serializeUser($user): array
     {
+        $name = $user->parentProfile?->full_name
+            ?: $user->username
+            ?: $user->email;
+
         return [
             'id' => $user->id,
-            'name' => $user->name,
+            'name' => $name,
             'email' => $user->email,
             'username' => $user->username,
             'role' => $user->role,

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('gender')->nullable();
             $table->date('date_of_birth')->nullable();
             $table->string('phone')->nullable();
+            $table->string('avatar')->nullable();
             $table->string('address')->nullable();
             $table->string('status')->default('studying')->index();
             $table->timestamps();

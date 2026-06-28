@@ -15,7 +15,7 @@ function Table({ columns, data, emptyText = 'Chưa có dữ liệu' }) {
           <tbody className="divide-y divide-brand-border text-brand-text">
             {data.length ? (
               data.map((row) => (
-                <tr className="hover:bg-brand-bg" key={row.id}>
+                <tr className="hover:bg-brand-bg" key={row.row_key || row.id}>
                   {columns.map((column) => (
                     <td className="px-4 py-3" key={column.key}>
                       {column.render ? column.render(row) : row[column.key]}
