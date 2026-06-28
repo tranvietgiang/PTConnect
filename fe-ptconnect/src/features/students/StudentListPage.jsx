@@ -8,9 +8,11 @@ import Input from "../../components/common/Input";
 import Loading from "../../components/common/Loading";
 import Select from "../../components/common/Select";
 import Table from "../../components/common/Table";
+import { useAuth } from "../../store/useAuth";
 import { useToast } from "../../store/useToast";
 
 function StudentListPage() {
+  const { user } = useAuth();
   const toast = useToast();
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -75,9 +77,11 @@ function StudentListPage() {
             Quản lý hồ sơ học sinh và phân lớp.
           </p>
         </div>
-        <Button as={Link} icon={Plus} to="/hoc-sinh/them">
-          Thêm học sinh
-        </Button>
+        {user?.role === "admin" ? (
+          <Button as={Link} icon={Plus} to="/hoc-sinh/them">
+            Thêm học sinh
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid gap-3 ">
@@ -115,15 +119,25 @@ function StudentListPage() {
               header: "Họ tên",
               key: "full_name",
               render: (row) => (
-                <Link
-                  className="font-semibold text-brand-teal-dark"
-                  to={`/hoc-sinh/${row.id}`}
-                >
-                  {row.full_name}
-                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-bg text-sm font-semibold text-brand-teal-dark">
+                    {row.avatar_url ? (
+                      <img alt={row.full_name} className="size-full object-cover" src={row.avatar_url} />
+                    ) : (
+                      row.full_name?.charAt(0) || "H"
+                    )}
+                  </div>
+                  <Link
+                    className="font-semibold text-brand-teal-dark"
+                    to={`/hoc-sinh/${row.id}`}
+                  >
+                    {row.full_name}
+                  </Link>
+                </div>
               ),
             },
             { header: "Lớp", key: "class_name" },
+            { header: "SĐT", key: "phone", render: (row) => row.phone || "-" },
             {
               header: "Trạng thái",
               key: "status",

@@ -11,20 +11,24 @@ import {
   X,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../store/useAuth'
 import Button from '../common/Button'
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Tổng quan', to: '/tong-quan' },
-  { icon: Users, label: 'Học sinh', to: '/hoc-sinh' },
-  { icon: BookOpen, label: 'Lớp học', to: '/lop-hoc' },
-  { icon: CalendarCheck, label: 'Điểm danh', to: '/diem-danh' },
-  { icon: GraduationCap, label: 'Điểm số', to: '/diem-so' },
-  { icon: ClipboardList, label: 'Bài tập', to: '/bai-tap' },
-  { icon: Bell, label: 'Thông báo', to: '/thong-bao' },
-  { icon: Home, label: 'Phụ huynh', to: '/phu-huynh' },
+  { icon: LayoutDashboard, label: 'Tổng quan', roles: ['admin', 'teacher', 'assistant'], to: '/tong-quan' },
+  { icon: Users, label: 'Học sinh', roles: ['admin', 'teacher', 'assistant'], to: '/hoc-sinh' },
+  { icon: BookOpen, label: 'Lớp học', roles: ['admin', 'teacher', 'assistant'], to: '/lop-hoc' },
+  { icon: CalendarCheck, label: 'Điểm danh', roles: ['admin', 'teacher', 'assistant'], to: '/diem-danh' },
+  { icon: GraduationCap, label: 'Điểm số', roles: ['admin', 'teacher'], to: '/diem-so' },
+  { icon: ClipboardList, label: 'Bài tập', roles: ['admin', 'teacher', 'parent'], to: '/bai-tap' },
+  { icon: Bell, label: 'Thông báo', roles: ['admin', 'teacher'], to: '/thong-bao' },
+  { icon: Home, label: 'Phụ huynh', roles: ['parent'], to: '/phu-huynh' },
 ]
 
 function Sidebar({ isOpen, onClose }) {
+  const { user } = useAuth()
+  const visibleItems = navItems.filter((item) => item.roles.includes(user?.role))
+
   return (
     <>
       <div
@@ -54,7 +58,7 @@ function Sidebar({ isOpen, onClose }) {
           />
         </div>
         <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon
 
             return (

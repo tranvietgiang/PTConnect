@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
+use App\Models\Classroom;
 use App\Models\ParentProfile;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
@@ -24,26 +25,15 @@ class AssignmentController extends Controller
             ->orderByDesc('created_at');
 
         if ($user->role === 'parent') {
-            $students = $this->parentStudents($user->id);
-            $classroomIds = $students->pluck('classroom_id')->unique()->values();
-            $gradeLevels = $students->pluck('classroom.grade_level')->filter()->unique()->values();
+            return $this->success('Assignments retrieved.', $this->parentAssignments($query, $user->id));
+        }
 
-            $assignments = $query
-                ->where('status', 'published')
-                ->where(function ($inner) use ($classroomIds, $gradeLevels): void {
-                    $inner->whereIn('classroom_id', $classroomIds)
-                        ->orWhereIn('grade_level', $gradeLevels);
-                })
-                ->get();
+        if ($user->role === 'teacher') {
+            $assignedClassroomIds = $this->assignedClassroomIds($user->id);
 
-            $data = $assignments->flatMap(function (Assignment $assignment) use ($students): array {
-                return $students
-                    ->filter(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment, $student))
-                    ->map(fn (Student $student): array => $this->serialize($assignment, $student))
-                    ->all();
-            })->values()->all();
-
-            return $this->success('Assignments retrieved.', $data);
+            $query->whereIn('classroom_id', $assignedClassroomIds);
+        } elseif ($user->role !== 'admin') {
+            return $this->error('Forbidden.', 403);
         }
 
         return $this->success(
@@ -77,6 +67,18 @@ class AssignmentController extends Controller
 
         if (empty($validated['classroom_id']) && empty($validated['grade_level'])) {
             return $this->error('Vui lòng chọn lớp hoặc khối.', 422);
+        }
+
+        if ($user->role === 'teacher') {
+            if (empty($validated['classroom_id'])) {
+                return $this->error('Giáo viên chỉ được giao bài cho lớp được phân công.', 403);
+            }
+
+            if (! in_array((int) $validated['classroom_id'], $this->assignedClassroomIds($user->id), true)) {
+                return $this->error('Forbidden.', 403);
+            }
+
+            $validated['grade_level'] = null;
         }
 
         $fileData = [];
@@ -144,20 +146,19 @@ class AssignmentController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
+        if ($this->isOverdue($assignment)) {
+            return $this->error('Đã quá hạn nộp bài, bạn không thể nộp thêm.', 422);
+        }
+
         $file = $request->file('submitted_file');
         $submittedAt = now();
-        $status = $assignment->due_date && $submittedAt->toDateString() > $assignment->due_date->toDateString()
-            ? 'late'
-            : 'submitted';
 
         $existing = AssignmentSubmission::query()
             ->where('assignment_id', $assignment->id)
             ->where('student_id', $student->id)
             ->first();
-
-        if ($existing?->submitted_file_path) {
-            Storage::disk('local')->delete($existing->submitted_file_path);
-        }
+        $oldFilePath = $existing?->submitted_file_path;
+        $newFilePath = $file->store('assignments/submissions');
 
         $submission = AssignmentSubmission::query()->updateOrCreate(
             [
@@ -165,13 +166,17 @@ class AssignmentController extends Controller
                 'student_id' => $student->id,
             ],
             [
-                'submitted_file_path' => $file->store('assignments/submissions'),
+                'submitted_file_path' => $newFilePath,
                 'submitted_file_name' => $file->getClientOriginalName(),
                 'submitted_file_mime' => $file->getClientMimeType(),
                 'submitted_at' => $submittedAt,
-                'status' => $status,
+                'status' => 'submitted',
             ],
         );
+
+        if ($oldFilePath && $oldFilePath !== $newFilePath) {
+            Storage::disk('local')->delete($oldFilePath);
+        }
 
         return $this->success('Submission uploaded.', $this->serializeSubmission($submission), 201);
     }
@@ -186,7 +191,14 @@ class AssignmentController extends Controller
             if (! $ownedStudentIds->contains($submission->student_id)) {
                 return $this->error('Forbidden.', 403);
             }
-        } elseif (! in_array($user->role, ['admin', 'teacher'], true)) {
+        } elseif ($user->role === 'teacher') {
+            $submission->loadMissing('assignment');
+
+            if (! $submission->assignment->classroom_id
+                || ! in_array((int) $submission->assignment->classroom_id, $this->assignedClassroomIds($user->id), true)) {
+                return $this->error('Forbidden.', 403);
+            }
+        } elseif ($user->role !== 'admin') {
             return $this->error('Forbidden.', 403);
         }
 
@@ -200,27 +212,68 @@ class AssignmentController extends Controller
         );
     }
 
+    private function parentAssignments($query, int $userId): array
+    {
+        $students = $this->parentStudents($userId);
+        $classroomIds = $students->pluck('classroom_id')->unique()->values();
+        $gradeLevels = $students->pluck('classroom.grade_level')->filter()->unique()->values();
+
+        $assignments = $query
+            ->where('status', 'published')
+            ->where(function ($inner) use ($classroomIds, $gradeLevels): void {
+                $inner->whereIn('classroom_id', $classroomIds)
+                    ->orWhereIn('grade_level', $gradeLevels);
+            })
+            ->get();
+
+        return $assignments->flatMap(function (Assignment $assignment) use ($students): array {
+            return $students
+                ->filter(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment, $student))
+                ->map(fn (Student $student): array => $this->serialize($assignment, $student))
+                ->all();
+        })->values()->all();
+    }
+
     private function canAccessAssignment(Request $request, Assignment $assignment): bool
     {
         $user = $request->attributes->get('auth_user');
 
-        if (in_array($user->role, ['admin', 'teacher', 'assistant'], true)) {
+        if ($user->role === 'admin') {
             return true;
         }
 
-        return $this->parentStudents($user->id)
-            ->contains(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment->loadMissing('classroom'), $student));
+        if ($user->role === 'teacher') {
+            return $assignment->classroom_id
+                && in_array((int) $assignment->classroom_id, $this->assignedClassroomIds($user->id), true);
+        }
+
+        if ($user->role === 'parent') {
+            return $this->parentStudents($user->id)
+                ->contains(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment->loadMissing('classroom'), $student));
+        }
+
+        return false;
     }
 
     private function parentStudents(int $userId): Collection
     {
         return ParentProfile::query()
             ->where('user_id', $userId)
-            ->with('students.classroom')
+            ->with('student.classroom')
             ->get()
-            ->flatMap(fn (ParentProfile $parent): Collection => $parent->students)
+            ->pluck('student')
+            ->filter()
             ->unique('id')
             ->values();
+    }
+
+    private function assignedClassroomIds(int $userId): array
+    {
+        return Classroom::query()
+            ->whereHas('users', fn ($query) => $query->where('users.id', $userId))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
     }
 
     private function assignmentMatchesStudent(Assignment $assignment, Student $student): bool
@@ -229,13 +282,87 @@ class AssignmentController extends Controller
             || ($assignment->grade_level && (int) $assignment->grade_level === (int) $student->classroom?->grade_level);
     }
 
+    private function isOverdue(Assignment $assignment): bool
+    {
+        return $assignment->due_date
+            && now()->toDateString() > $assignment->due_date->toDateString();
+    }
+
+    private function assignmentStudents(Assignment $assignment): Collection
+    {
+        return Student::query()
+            ->with('classroom:id,name,grade_level')
+            ->where(function ($query) use ($assignment): void {
+                $hasClassroom = (bool) $assignment->classroom_id;
+
+                if ($hasClassroom) {
+                    $query->where('classroom_id', $assignment->classroom_id);
+                }
+
+                if ($assignment->grade_level) {
+                    $gradeScope = fn ($classroom) => $classroom->where('grade_level', $assignment->grade_level);
+
+                    if ($hasClassroom) {
+                        $query->orWhereHas('classroom', $gradeScope);
+                    } else {
+                        $query->whereHas('classroom', $gradeScope);
+                    }
+                }
+            })
+            ->orderBy('full_name')
+            ->get();
+    }
+
+    private function serializeSubmissionStatuses(Assignment $assignment): array
+    {
+        $assignment->loadMissing('submissions.student');
+        $submissions = $assignment->submissions->keyBy('student_id');
+
+        return $this->assignmentStudents($assignment)
+            ->map(fn (Student $student): array => $this->serializeStudentSubmission(
+                $assignment,
+                $student,
+                $submissions->get($student->id),
+            ))
+            ->all();
+    }
+
+    private function serializeStudentSubmission(
+        Assignment $assignment,
+        Student $student,
+        ?AssignmentSubmission $submission,
+    ): array {
+        $submitted = (bool) $submission;
+
+        return [
+            'id' => $submission?->id,
+            'assignment_id' => $assignment->id,
+            'student_id' => $student->id,
+            'student_name' => $student->full_name,
+            'class_name' => $student->classroom?->name,
+            'file_name' => $submission?->submitted_file_name,
+            'submitted_at' => $submission?->submitted_at?->toDateTimeString(),
+            'status' => $submitted ? 'submitted' : 'not_submitted',
+            'status_label' => $submitted ? 'Đã nộp' : 'Chưa nộp',
+            'score' => $submission?->score,
+            'teacher_comment' => $submission?->teacher_comment,
+        ];
+    }
+
     private function serialize(Assignment $assignment, ?Student $student = null): array
     {
         $submission = $student
             ? $assignment->submissions->firstWhere('student_id', $student->id)
             : null;
+        $isOverdue = $this->isOverdue($assignment);
+        $submissionStatuses = $student ? [] : $this->serializeSubmissionStatuses($assignment);
+        $submittedCount = collect($submissionStatuses)
+            ->where('status', 'submitted')
+            ->count();
+        $submissionStatus = $submission ? 'submitted' : 'not_submitted';
 
         return [
+            'row_key' => $student ? "{$assignment->id}-{$student->id}" : (string) $assignment->id,
             'id' => $assignment->id,
             'title' => $assignment->title,
             'description' => $assignment->description,
@@ -243,15 +370,19 @@ class AssignmentController extends Controller
             'class_name' => $assignment->classroom?->name,
             'grade_level' => $assignment->grade_level,
             'due_date' => $assignment->due_date?->toDateString(),
+            'is_overdue' => $isOverdue,
+            'can_submit' => ! $isOverdue,
             'status' => $assignment->status,
             'has_attachment' => (bool) $assignment->attachment_path,
             'attachment_name' => $assignment->attachment_name,
             'student_id' => $student?->id,
             'student_name' => $student?->full_name,
+            'submission_status' => $student ? $submissionStatus : null,
+            'submission_status_label' => $student ? ($submission ? 'Đã nộp' : 'Chưa nộp') : null,
+            'submitted_count' => $submittedCount,
+            'student_count' => count($submissionStatuses),
             'submission' => $submission ? $this->serializeSubmission($submission) : null,
-            'submissions' => $student
-                ? []
-                : $assignment->submissions->map(fn (AssignmentSubmission $submission): array => $this->serializeSubmission($submission))->all(),
+            'submissions' => $submissionStatuses,
         ];
     }
 
@@ -264,7 +395,9 @@ class AssignmentController extends Controller
             'file_name' => $submission->submitted_file_name,
             'student_name' => $submission->student?->full_name,
             'submitted_at' => $submission->submitted_at?->toDateTimeString(),
-            'status' => $submission->status,
+            'status' => 'submitted',
+            'status_label' => 'Đã nộp',
+            'stored_status' => $submission->status,
             'score' => $submission->score,
             'teacher_comment' => $submission->teacher_comment,
         ];

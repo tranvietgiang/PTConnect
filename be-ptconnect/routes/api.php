@@ -21,8 +21,9 @@ Route::middleware('jwt.auth')->group(function (): void {
     Route::post('/classes', [ClassroomController::class, 'store'])->middleware('role:admin');
 
     Route::get('/students', [StudentController::class, 'index']);
+    Route::post('/students', [StudentController::class, 'store'])->middleware('role:admin');
+    Route::post('/students/import', [StudentController::class, 'import'])->middleware('role:admin');
     Route::get('/students/{student}', [StudentController::class, 'show']);
-    Route::post('/students', [StudentController::class, 'store'])->middleware('role:admin,teacher,assistant');
 
     Route::get('/assignments', [AssignmentController::class, 'index']);
     Route::post('/assignments', [AssignmentController::class, 'store'])->middleware('role:admin,teacher');
