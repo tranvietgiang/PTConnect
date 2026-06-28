@@ -15,11 +15,7 @@ function Input({
 
   return (
     <label className="block" htmlFor={id}>
-      {label ? (
-        <span className="mb-1.5 block text-sm font-medium text-brand-text">
-          {label}
-        </span>
-      ) : null}
+      {label ? <span className="mb-1.5 block text-sm font-medium text-brand-text">{label}</span> : null}
       <span className="relative block">
         <input
           id={id}

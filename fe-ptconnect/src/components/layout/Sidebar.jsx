@@ -2,6 +2,7 @@ import {
   Bell,
   BookOpen,
   CalendarCheck,
+  ClipboardList,
   GraduationCap,
   Home,
   LayoutDashboard,
@@ -18,6 +19,7 @@ const navItems = [
   { icon: BookOpen, label: 'Lớp học', to: '/lop-hoc' },
   { icon: CalendarCheck, label: 'Điểm danh', to: '/diem-danh' },
   { icon: GraduationCap, label: 'Điểm số', to: '/diem-so' },
+  { icon: ClipboardList, label: 'Bài tập', to: '/bai-tap' },
   { icon: Bell, label: 'Thông báo', to: '/thong-bao' },
   { icon: Home, label: 'Phụ huynh', to: '/phu-huynh' },
 ]

@@ -139,7 +139,7 @@ class V1DatabaseSeeder extends Seeder
                 ['username' => $data['student_code']],
                 [
                     'name' => $data['parent_name'],
-                    'email' => null,
+                    'email' => $data['parent_email'],
                     'password' => Hash::make('12345678'),
                     'role' => 'parent',
                     'is_active' => true,

@@ -3,7 +3,9 @@ import AuthLayout from "../layouts/AuthLayout";
 import MainLayout from "../layouts/MainLayout";
 import AttendanceHistoryPage from "../features/attendance/AttendanceHistoryPage";
 import AttendancePage from "../features/attendance/AttendancePage";
+import AssignmentPage from "../features/assignments/AssignmentPage";
 import LoginPage from "../features/auth/LoginPage";
+import ClassCreatePage from "../features/classes/ClassCreatePage";
 import ClassDetailPage from "../features/classes/ClassDetailPage";
 import ClassListPage from "../features/classes/ClassListPage";
 import NotificationPage from "../features/notifications/NotificationPage";
@@ -39,6 +41,7 @@ function AppRoutes() {
             <Route element={<StudentCreatePage />} path="/hoc-sinh/them" />
             <Route element={<StudentDetailPage />} path="/hoc-sinh/:id" />
             <Route element={<ClassListPage />} path="/lop-hoc" />
+            <Route element={<ClassCreatePage />} path="/lop-hoc/them" />
             <Route element={<ClassDetailPage />} path="/lop-hoc/:id" />
             <Route element={<AttendancePage />} path="/diem-danh" />
             <Route
@@ -47,6 +50,7 @@ function AppRoutes() {
             />
             <Route element={<ScoreListPage />} path="/diem-so" />
             <Route element={<ScoreReportPage />} path="/diem-so/bao-cao" />
+            <Route element={<AssignmentPage />} path="/bai-tap" />
             <Route element={<NotificationPage />} path="/thong-bao" />
             <Route element={<ParentDashboardPage />} path="/phu-huynh" />
           </Route>

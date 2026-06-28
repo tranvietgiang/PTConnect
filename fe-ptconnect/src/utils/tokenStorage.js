@@ -2,8 +2,15 @@ const ACCESS_TOKEN_KEY = 'ptconnect_access_token'
 const REFRESH_TOKEN_KEY = 'ptconnect_refresh_token'
 
 export function setTokens(accessToken, refreshToken) {
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  if (accessToken) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  }
+
+  if (refreshToken) {
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  } else {
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  }
 }
 
 export function getAccessToken() {
