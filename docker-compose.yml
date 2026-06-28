@@ -1,0 +1,71 @@
+version: "3"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ptconnect-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ptconnect_pass
+      MYSQL_DATABASE: ptconnect_db
+      MYSQL_USER: ptconnect
+      MYSQL_PASSWORD: ptconnect_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ptconnect_mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./be-ptconnect
+    container_name: ptconnect-backend
+    restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - ./be-ptconnect:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://192.168.33.12:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ptconnect_db
+      DB_USERNAME: ptconnect
+      DB_PASSWORD: ptconnect_pass
+    depends_on:
+      - mysql
+
+  frontend:
+    build: ./fe-ptconnect
+    container_name: ptconnect-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./fe-ptconnect:/app
+      - /app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_URL: http://192.168.33.12:8000/api
+    depends_on:
+      - backend
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ptconnect-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ptconnect_pass
+      UPLOAD_LIMIT: 128M
+    depends_on:
+      - mysql
+
+volumes:
+  ptconnect_mysql_data:
