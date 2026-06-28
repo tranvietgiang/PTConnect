@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { emitLoading } from '../utils/loadingEvents'
 import {
   clearTokens,
   getAccessToken,
@@ -26,8 +27,28 @@ const refreshClient = axios.create({
 })
 
 let refreshPromise = null
+let pendingRequests = 0
+
+function startLoading(config) {
+  if (config?.showLoading === false) return
+
+  pendingRequests += 1
+  emitLoading(true, config?.loadingLabel || 'Đang tải dữ liệu')
+}
+
+function stopLoading(config) {
+  if (config?.showLoading === false) return
+
+  pendingRequests = Math.max(0, pendingRequests - 1)
+
+  if (pendingRequests === 0) {
+    emitLoading(false)
+  }
+}
 
 axiosClient.interceptors.request.use((config) => {
+  startLoading(config)
+
   const token = getAccessToken()
 
   if (token) {
@@ -38,9 +59,14 @@ axiosClient.interceptors.request.use((config) => {
 })
 
 axiosClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    stopLoading(response.config)
+
+    return response.data
+  },
   async (error) => {
     const originalRequest = error.config
+    stopLoading(originalRequest)
 
     if (
       error.response?.status !== 401 ||
@@ -55,11 +81,11 @@ axiosClient.interceptors.response.use(
     if (!refreshToken) {
       clearTokens()
       emitToast({
-        title: 'Session expired',
-        message: 'Please sign in again.',
+        title: 'Phiên đăng nhập đã hết hạn',
+        message: 'Vui lòng đăng nhập lại.',
         type: 'error',
       })
-      window.location.assign('/login')
+      window.location.assign('/dang-nhap')
       return Promise.reject(error.response?.data || error)
     }
 
@@ -80,11 +106,11 @@ axiosClient.interceptors.response.use(
     } catch (refreshError) {
       clearTokens()
       emitToast({
-        title: 'Session expired',
-        message: 'Please sign in again.',
+        title: 'Phiên đăng nhập đã hết hạn',
+        message: 'Vui lòng đăng nhập lại.',
         type: 'error',
       })
-      window.location.assign('/login')
+      window.location.assign('/dang-nhap')
       return Promise.reject(refreshError.response?.data || refreshError)
     } finally {
       refreshPromise = null

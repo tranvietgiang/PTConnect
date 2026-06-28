@@ -2,31 +2,31 @@ import { Link } from 'react-router-dom'
 import Table from '../../components/common/Table'
 
 const classes = [
-  { id: 1, homeroom: 'Ms. Hoa', name: '10A', students: 38 },
-  { id: 2, homeroom: 'Mr. Nam', name: '11B', students: 35 },
-  { id: 3, homeroom: 'Ms. Linh', name: '9C', students: 41 },
+  { id: 1, homeroom: 'Cô Hoa', name: '10A1', students: 38 },
+  { id: 2, homeroom: 'Thầy Nam', name: '11A1', students: 35 },
+  { id: 3, homeroom: 'Cô Linh', name: '12A1', students: 41 },
 ]
 
 function ClassListPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Classes</h1>
-        <p className="mt-1 text-sm text-brand-muted">Browse class rosters and homeroom teachers.</p>
+        <h1 className="text-2xl font-bold text-brand-text">Lớp học</h1>
+        <p className="mt-1 text-sm text-brand-muted">Xem danh sách lớp và giáo viên chủ nhiệm.</p>
       </div>
       <Table
         columns={[
           {
-            header: 'Class',
+            header: 'Lớp',
             key: 'name',
             render: (row) => (
-              <Link className="font-semibold text-brand-teal-dark" to={`/classes/${row.id}`}>
+              <Link className="font-semibold text-brand-teal-dark" to={`/lop-hoc/${row.id}`}>
                 {row.name}
               </Link>
             ),
           },
-          { header: 'Homeroom', key: 'homeroom' },
-          { header: 'Students', key: 'students' },
+          { header: 'Giáo viên chủ nhiệm', key: 'homeroom' },
+          { header: 'Sĩ số', key: 'students' },
         ]}
         data={classes}
       />

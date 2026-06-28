@@ -20,22 +20,27 @@ function LoginPage() {
 
     try {
       await login(form)
-      toast.success('Login successful', 'Welcome back to PTConnect.')
-      navigate(location.state?.from?.pathname || '/dashboard', { replace: true })
+      toast.success('Đăng nhập thành công', 'Trình duyệt có thể đề xuất lưu mật khẩu cho lần sau.')
+      navigate(location.state?.from?.pathname || '/tong-quan', { replace: true })
     } catch (error) {
-      toast.error('Login failed', error.message || 'Please check your email and password.')
+      toast.error('Đăng nhập thất bại', error.message || 'Vui lòng kiểm tra email và mật khẩu.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form className="rounded-lg border border-brand-border bg-brand-white p-6 shadow-sm" onSubmit={handleSubmit}>
+    <form
+      autoComplete="on"
+      className="rounded-lg border border-brand-border bg-brand-white p-6 shadow-sm"
+      onSubmit={handleSubmit}
+    >
       <div className="space-y-4">
         <Input
-          autoComplete="email"
+          autoComplete="username"
           id="email"
           label="Email"
+          name="email"
           onChange={(event) => setForm({ ...form, email: event.target.value })}
           placeholder="admin@ptconnect.test"
           type="email"
@@ -44,15 +49,25 @@ function LoginPage() {
         <Input
           autoComplete="current-password"
           id="password"
-          label="Password"
+          label="Mật khẩu"
+          name="password"
           onChange={(event) => setForm({ ...form, password: event.target.value })}
-          placeholder="Enter password"
+          placeholder="Nhập mật khẩu"
+          showPasswordToggle
           type="password"
           value={form.password}
         />
+        <label className="flex items-start gap-2 text-sm text-brand-muted">
+          <input
+            className="mt-1 size-4 rounded border-brand-border text-brand-teal focus:ring-brand-teal"
+            name="remember"
+            type="checkbox"
+          />
+          <span>Ghi nhớ tài khoản và cho phép trình duyệt lưu mật khẩu</span>
+        </label>
       </div>
       <Button className="mt-6 w-full" disabled={loading} icon={LogIn} type="submit">
-        {loading ? 'Signing in' : 'Sign in'}
+        {loading ? 'Đang đăng nhập' : 'Đăng nhập'}
       </Button>
     </form>
   )

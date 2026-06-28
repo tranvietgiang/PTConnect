@@ -5,9 +5,9 @@ export const USER_ROLES = {
 }
 
 export const ATTENDANCE_STATUS = {
-  PRESENT: 'Present',
-  ABSENT: 'Absent',
-  LATE: 'Late',
+  PRESENT: 'Có mặt',
+  ABSENT: 'Vắng',
+  LATE: 'Đi muộn',
 }
 
-export const SCORE_LEVELS = ['Excellent', 'Good', 'Average', 'Needs support']
+export const SCORE_LEVELS = ['Giỏi', 'Khá', 'Trung bình', 'Cần hỗ trợ']

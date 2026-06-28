@@ -10,15 +10,15 @@ function AttendanceHistoryPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Attendance history</h1>
-        <p className="mt-1 text-sm text-brand-muted">Review submitted attendance records.</p>
+        <h1 className="text-2xl font-bold text-brand-text">Lịch sử điểm danh</h1>
+        <p className="mt-1 text-sm text-brand-muted">Xem lại các lần điểm danh đã gửi.</p>
       </div>
       <Table
         columns={[
-          { header: 'Date', key: 'date' },
-          { header: 'Class', key: 'className' },
-          { header: 'Present', key: 'present' },
-          { header: 'Absent', key: 'absent' },
+          { header: 'Ngày', key: 'date' },
+          { header: 'Lớp', key: 'className' },
+          { header: 'Có mặt', key: 'present' },
+          { header: 'Vắng', key: 'absent' },
         ]}
         data={history}
       />

@@ -10,7 +10,7 @@ function Modal({ children, isOpen, onClose, title }) {
         <div className="flex items-center justify-between border-b border-brand-border px-5 py-4">
           <h2 className="text-lg font-semibold text-brand-text">{title}</h2>
           <Button
-            aria-label="Close modal"
+            aria-label="Đóng hộp thoại"
             className="size-9 px-0"
             icon={X}
             onClick={onClose}

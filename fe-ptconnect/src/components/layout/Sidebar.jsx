@@ -13,13 +13,13 @@ import { NavLink } from 'react-router-dom'
 import Button from '../common/Button'
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
-  { icon: Users, label: 'Students', to: '/students' },
-  { icon: BookOpen, label: 'Classes', to: '/classes' },
-  { icon: CalendarCheck, label: 'Attendance', to: '/attendance' },
-  { icon: GraduationCap, label: 'Scores', to: '/scores' },
-  { icon: Bell, label: 'Notifications', to: '/notifications' },
-  { icon: Home, label: 'Parent Portal', to: '/parent' },
+  { icon: LayoutDashboard, label: 'Tổng quan', to: '/tong-quan' },
+  { icon: Users, label: 'Học sinh', to: '/hoc-sinh' },
+  { icon: BookOpen, label: 'Lớp học', to: '/lop-hoc' },
+  { icon: CalendarCheck, label: 'Điểm danh', to: '/diem-danh' },
+  { icon: GraduationCap, label: 'Điểm số', to: '/diem-so' },
+  { icon: Bell, label: 'Thông báo', to: '/thong-bao' },
+  { icon: Home, label: 'Phụ huynh', to: '/phu-huynh' },
 ]
 
 function Sidebar({ isOpen, onClose }) {
@@ -36,16 +36,17 @@ function Sidebar({ isOpen, onClose }) {
       >
         <div className="flex h-16 items-center gap-3 border-b border-brand-border px-5">
           <div className="grid size-10 place-items-center rounded-md bg-brand-teal text-brand-white">
-            <ShieldCheck aria-hidden="true" className="size-5" />
+            <ShieldCheck aria-hidden="true" className="size-6" />
           </div>
           <div>
             <p className="text-base font-bold text-brand-text">PTConnect</p>
-            <p className="text-xs text-brand-muted">School management</p>
+            <p className="text-xs text-brand-muted">Quản lý học sinh</p>
           </div>
           <Button
-            aria-label="Close navigation"
-            className="ml-auto size-9 px-0 lg:hidden"
+            aria-label="Đóng menu"
+            className="ml-auto size-10 px-0 lg:hidden"
             icon={X}
+            iconClassName="size-6"
             onClick={onClose}
             variant="ghost"
           />
@@ -74,7 +75,7 @@ function Sidebar({ isOpen, onClose }) {
           })}
         </nav>
         <div className="border-t border-brand-border p-4 text-xs text-brand-muted">
-          Frontend scaffold ready for API integration.
+          Hệ thống quản lý học sinh PTConnect.
         </div>
       </aside>
     </>
