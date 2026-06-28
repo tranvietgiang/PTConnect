@@ -30,7 +30,7 @@ class StudentController extends Controller
         }
 
         $students = $query
-            ->when($request->filled('classroom_id'), fn ($query) => $query->where('classroom_id', $request->integer('classroom_id')))
+            ->when($request->filled('classroom_id'), fn($query) => $query->where('classroom_id', $request->integer('classroom_id')))
             ->when($request->filled('keyword'), function ($query) use ($request): void {
                 $keyword = trim((string) $request->input('keyword'));
 
@@ -41,7 +41,7 @@ class StudentController extends Controller
             })
             ->orderBy('full_name')
             ->get()
-            ->map(fn (Student $student): array => $this->serialize($student));
+            ->map(fn(Student $student): array => $this->serialize($student));
 
         return $this->success('Students retrieved.', $students->all());
     }
@@ -59,7 +59,7 @@ class StudentController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'date_of_birth' => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:255'],
-            'avatar' => ['nullable', 'file', 'max:2048', 'mimes:jpg,jpeg,png,webp'],
+            'avatar' => ['nullable', 'file', 'max:2048', 'mimes:pdf,doc,docx,xls,xlsx,ppt,jpg,jpeg,png,zip,txt'],
         ]);
 
         $avatarPath = $request->hasFile('avatar')
@@ -96,13 +96,13 @@ class StudentController extends Controller
         }
 
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:10240', 'mimes:xlsx,csv,txt'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:csv,pdf,doc,docx,xls,xlsx,ppt,jpg,jpeg,png,zip,txt'],
             'classroom_id' => ['nullable', 'integer', Rule::exists('classrooms', 'id')],
         ]);
 
         $defaultClassroomId = $validated['classroom_id'] ?? null;
         $rows = $this->readImportRows($request->file('file')->getRealPath(), $request->file('file')->getClientOriginalExtension());
-        $classrooms = Classroom::query()->get()->keyBy(fn (Classroom $classroom): string => mb_strtolower(trim($classroom->name)));
+        $classrooms = Classroom::query()->get()->keyBy(fn(Classroom $classroom): string => mb_strtolower(trim($classroom->name)));
         $created = 0;
         $skipped = 0;
         $errors = [];
@@ -199,9 +199,9 @@ class StudentController extends Controller
     private function assignedClassroomIds(int $userId): array
     {
         return Classroom::query()
-            ->whereHas('users', fn ($query) => $query->where('users.id', $userId))
+            ->whereHas('users', fn($query) => $query->where('users.id', $userId))
             ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
+            ->map(fn($id): int => (int) $id)
             ->all();
     }
 
@@ -212,7 +212,7 @@ class StudentController extends Controller
             ->pluck('student_id')
             ->unique()
             ->values()
-            ->map(fn ($id): int => (int) $id)
+            ->map(fn($id): int => (int) $id)
             ->all();
     }
 
@@ -354,7 +354,7 @@ class StudentController extends Controller
 
     private function normalizeHeaders(array $headers): array
     {
-        return array_map(fn ($header): string => $this->mapImportHeader((string) $header), $headers);
+        return array_map(fn($header): string => $this->mapImportHeader((string) $header), $headers);
     }
 
     private function mapImportHeader(string $header): string

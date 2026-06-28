@@ -17,6 +17,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AssignmentController extends Controller
 {
+    private const ALLOWED_FILE_TYPES = 'pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,zip,rar,7z,txt,csv';
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->attributes->get('auth_user');
@@ -38,7 +40,7 @@ class AssignmentController extends Controller
 
         return $this->success(
             'Assignments retrieved.',
-            $query->get()->map(fn (Assignment $assignment): array => $this->serialize($assignment))->all(),
+            $query->get()->map(fn(Assignment $assignment): array => $this->serialize($assignment))->all(),
         );
     }
 
@@ -61,8 +63,11 @@ class AssignmentController extends Controller
                 'nullable',
                 'file',
                 'max:10240',
-                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png',
+                'extensions:'.self::ALLOWED_FILE_TYPES,
             ],
+        ], [
+            'attachment_file.extensions' => 'File đính kèm phải thuộc một trong các định dạng: '.self::ALLOWED_FILE_TYPES.'.',
+            'attachment_file.max' => 'File đính kèm không được vượt quá 10MB.',
         ]);
 
         if (empty($validated['classroom_id']) && empty($validated['grade_level'])) {
@@ -136,8 +141,13 @@ class AssignmentController extends Controller
                 'required',
                 'file',
                 'max:10240',
-                'mimes:pdf,doc,docx,jpg,jpeg,png,zip',
+                'extensions:'.self::ALLOWED_FILE_TYPES,
             ],
+        ], [
+            'submitted_file.required' => 'Vui lòng chọn file bài nộp.',
+            'submitted_file.file' => 'File bài nộp không hợp lệ.',
+            'submitted_file.extensions' => 'File bài nộp phải thuộc một trong các định dạng: '.self::ALLOWED_FILE_TYPES.'.',
+            'submitted_file.max' => 'File bài nộp không được vượt quá 10MB.',
         ]);
 
         $student = $this->parentStudents($user->id)->firstWhere('id', (int) $validated['student_id']);
@@ -194,8 +204,10 @@ class AssignmentController extends Controller
         } elseif ($user->role === 'teacher') {
             $submission->loadMissing('assignment');
 
-            if (! $submission->assignment->classroom_id
-                || ! in_array((int) $submission->assignment->classroom_id, $this->assignedClassroomIds($user->id), true)) {
+            if (
+                ! $submission->assignment->classroom_id
+                || ! in_array((int) $submission->assignment->classroom_id, $this->assignedClassroomIds($user->id), true)
+            ) {
                 return $this->error('Forbidden.', 403);
             }
         } elseif ($user->role !== 'admin') {
@@ -210,6 +222,38 @@ class AssignmentController extends Controller
             Storage::disk('local')->path($submission->submitted_file_path),
             $submission->submitted_file_name,
         );
+    }
+
+    public function gradeSubmission(Request $request, AssignmentSubmission $submission): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $submission->loadMissing(['assignment', 'student.classroom']);
+
+        if (! $this->canGradeSubmission($user, $submission)) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        if ($request->filled('score')) {
+            $request->merge([
+                'score' => str_replace(',', '.', trim((string) $request->input('score'))),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'score' => ['nullable', 'regex:/^(10([.]0{1,2})?|[0-9]([.][0-9]{1,2})?)$/'],
+            'teacher_comment' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'score.regex' => 'Điểm phải từ 0 đến 10 và chỉ được nhập tối đa 2 chữ số thập phân.',
+            'teacher_comment.max' => 'Nhận xét không được vượt quá 2000 ký tự.',
+        ]);
+
+        $submission->update([
+            'score' => $validated['score'] ?? null,
+            'teacher_comment' => $validated['teacher_comment'] ?? null,
+        ]);
+
+        return $this->success('Submission graded.', $this->serializeSubmission($submission->refresh()->load('student')));
     }
 
     private function parentAssignments($query, int $userId): array
@@ -228,8 +272,8 @@ class AssignmentController extends Controller
 
         return $assignments->flatMap(function (Assignment $assignment) use ($students): array {
             return $students
-                ->filter(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment, $student))
-                ->map(fn (Student $student): array => $this->serialize($assignment, $student))
+                ->filter(fn(Student $student): bool => $this->assignmentMatchesStudent($assignment, $student))
+                ->map(fn(Student $student): array => $this->serialize($assignment, $student))
                 ->all();
         })->values()->all();
     }
@@ -249,10 +293,26 @@ class AssignmentController extends Controller
 
         if ($user->role === 'parent') {
             return $this->parentStudents($user->id)
-                ->contains(fn (Student $student): bool => $this->assignmentMatchesStudent($assignment->loadMissing('classroom'), $student));
+                ->contains(fn(Student $student): bool => $this->assignmentMatchesStudent($assignment->loadMissing('classroom'), $student));
         }
 
         return false;
+    }
+
+    private function canGradeSubmission($user, AssignmentSubmission $submission): bool
+    {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if ($user->role !== 'teacher') {
+            return false;
+        }
+
+        $studentClassroomId = $submission->student?->classroom_id;
+
+        return $studentClassroomId
+            && in_array((int) $studentClassroomId, $this->assignedClassroomIds($user->id), true);
     }
 
     private function parentStudents(int $userId): Collection
@@ -270,9 +330,9 @@ class AssignmentController extends Controller
     private function assignedClassroomIds(int $userId): array
     {
         return Classroom::query()
-            ->whereHas('users', fn ($query) => $query->where('users.id', $userId))
+            ->whereHas('users', fn($query) => $query->where('users.id', $userId))
             ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
+            ->map(fn($id): int => (int) $id)
             ->all();
     }
 
@@ -300,7 +360,7 @@ class AssignmentController extends Controller
                 }
 
                 if ($assignment->grade_level) {
-                    $gradeScope = fn ($classroom) => $classroom->where('grade_level', $assignment->grade_level);
+                    $gradeScope = fn($classroom) => $classroom->where('grade_level', $assignment->grade_level);
 
                     if ($hasClassroom) {
                         $query->orWhereHas('classroom', $gradeScope);
@@ -319,7 +379,7 @@ class AssignmentController extends Controller
         $submissions = $assignment->submissions->keyBy('student_id');
 
         return $this->assignmentStudents($assignment)
-            ->map(fn (Student $student): array => $this->serializeStudentSubmission(
+            ->map(fn(Student $student): array => $this->serializeStudentSubmission(
                 $assignment,
                 $student,
                 $submissions->get($student->id),
@@ -367,7 +427,7 @@ class AssignmentController extends Controller
             'title' => $assignment->title,
             'description' => $assignment->description,
             'classroom_id' => $assignment->classroom_id,
-            'class_name' => $assignment->classroom?->name,
+            'class_name' => $student?->classroom?->name ?? $assignment->classroom?->name,
             'grade_level' => $assignment->grade_level,
             'due_date' => $assignment->due_date?->toDateString(),
             'is_overdue' => $isOverdue,

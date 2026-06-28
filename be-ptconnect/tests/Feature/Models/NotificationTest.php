@@ -50,6 +50,7 @@ class NotificationTest extends TestCase
 
         $this->parentProfile = ParentProfile::create([
             'user_id' => $parentUser->id,
+            'student_id' => $this->student->id,
             'full_name' => 'Parent Name',
             'email' => 'parent@test.com',
             'relationship' => 'father',
