@@ -1,5 +1,6 @@
 import { User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { attendanceApi } from "../../api/attendanceApi";
 import { scoreApi } from "../../api/scoreApi";
 import { studentApi } from "../../api/studentApi";
 import Loading from "../../components/common/Loading";
@@ -31,30 +32,56 @@ function statusLabel(status) {
   return status || "-";
 }
 
+function attendanceStatusBadge(status) {
+  if (status === "present")
+    return "bg-green-100 text-green-700";
+  if (status === "late")
+    return "bg-amber-100 text-amber-700";
+  if (status === "absent")
+    return "bg-red-100 text-red-700";
+  return "bg-gray-100 text-gray-500";
+}
+
+function attendanceStatusText(status) {
+  if (status === "present") return "Có mặt";
+  if (status === "late") return "Đi muộn";
+  if (status === "absent") return "Vắng";
+  return "-";
+}
+
+const tabs = [
+  { key: "info", label: "Thông tin" },
+  { key: "attendance", label: "Điểm danh" },
+];
+
 function ParentDashboardPage() {
   const toast = useToast();
   const [students, setStudents] = useState([]);
   const [scores, setScores] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAttendanceStudentId, setSelectedAttendanceStudentId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadData() {
       try {
-        const [studentResponse, scoreResponse] = await Promise.all([
+        const [studentResponse, scoreResponse, attendanceResponse] = await Promise.all([
           studentApi.getAll(),
           scoreApi.getAll(),
+          attendanceApi.getParentHistory(),
         ]);
 
         if (!mounted) return;
 
         setStudents(studentResponse.data || []);
         setScores(scoreResponse.data || []);
+        setAttendanceRecords(attendanceResponse.data || []);
       } catch (error) {
         if (mounted) {
           toast.error(
-            "Không tải được thông tin phụ huynh",
+            "Không tải được thông tin",
             error.message || "Vui lòng thử lại sau.",
           );
         }
@@ -83,6 +110,30 @@ function ParentDashboardPage() {
     }, {});
   }, [scores]);
 
+  const attendanceByStudent = useMemo(() => {
+    return attendanceRecords.reduce((groups, record) => {
+      const studentId = String(record.student_id);
+
+      groups[studentId] = groups[studentId] || [];
+      groups[studentId].push(record);
+
+      return groups;
+    }, {});
+  }, [attendanceRecords]);
+
+  const attendanceSummary = useMemo(() => {
+    return students.reduce((summary, student) => {
+      const records = attendanceByStudent[String(student.id)] || [];
+      const present = records.filter((r) => r.status === "present").length;
+      const late = records.filter((r) => r.status === "late").length;
+      const absent = records.filter((r) => r.status === "absent").length;
+
+      summary[String(student.id)] = { total: records.length, present, late, absent };
+
+      return summary;
+    }, {});
+  }, [students, attendanceByStudent]);
+
   if (loading) {
     return <Loading label="Đang tải thông tin phụ huynh" />;
   }
@@ -98,9 +149,15 @@ function ParentDashboardPage() {
         </p>
       </div>
 
-      {students.length ? (
+      {!students.length ? (
+        <div className="rounded-lg border border-brand-border bg-brand-white px-4 py-8 text-center text-sm text-brand-muted">
+          Chưa có học sinh được liên kết với tài khoản phụ huynh này.
+        </div>
+      ) : (
         students.map((student) => {
           const studentScores = scoresByStudent[String(student.id)] || [];
+          const studentAttendance = attendanceByStudent[String(student.id)] || [];
+          const summary = attendanceSummary[String(student.id)] || { total: 0, present: 0, late: 0, absent: 0 };
 
           return (
             <section className="space-y-4" key={student.id}>
@@ -142,14 +199,108 @@ function ParentDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-4 border-t border-brand-border pt-4">
+                  <div className="flex gap-1 rounded-lg bg-brand-bg p-1">
+                    {tabs.map((tab) => (
+                      <button
+                        className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                          (tab.key === "attendance" ? selectedAttendanceStudentId === student.id : selectedAttendanceStudentId !== student.id)
+                            ? "bg-brand-white text-brand-teal-dark shadow-sm"
+                            : "text-brand-muted hover:text-brand-text"
+                        }`}
+                        key={tab.key}
+                        onClick={() => {
+                          setSelectedAttendanceStudentId(
+                            tab.key === "attendance" ? student.id : null,
+                          );
+                        }}
+                        type="button"
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedAttendanceStudentId === student.id && (
+                    <div className="mt-3 space-y-2">
+                      {summary.total > 0 && (
+                        <div className="flex gap-3 text-sm">
+                          <span className="font-medium text-brand-text">
+                            Tổng: {summary.total} buổi
+                          </span>
+                          <span className="text-green-600">
+                            Có mặt: {summary.present}
+                          </span>
+                          <span className="text-amber-600">
+                            Đi muộn: {summary.late}
+                          </span>
+                          <span className="text-red-600">
+                            Vắng: {summary.absent}
+                          </span>
+                        </div>
+                      )}
+
+                      {studentAttendance.length ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead>
+                              <tr className="border-b border-brand-border text-xs font-bold uppercase tracking-wide text-brand-muted">
+                                <th className="px-3 py-2">Ngày</th>
+                                <th className="px-3 py-2">Buổi học</th>
+                                <th className="px-3 py-2">Lớp</th>
+                                <th className="px-3 py-2">Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {studentAttendance.map((record) => (
+                                <tr
+                                  className="border-b border-brand-border last:border-0"
+                                  key={record.id}
+                                >
+                                  <td className="px-3 py-2 text-brand-text">
+                                    {record.attendance_date}
+                                  </td>
+                                  <td className="px-3 py-2 text-brand-text">
+                                    {record.session_name || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-brand-muted">
+                                    {record.class_name || "-"}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <span
+                                      className={`inline-flex h-6 items-center rounded-md px-2 text-xs font-semibold ${attendanceStatusBadge(record.status)}`}
+                                    >
+                                      {attendanceStatusText(record.status)}
+                                      {record.status === "late" && record.late_minutes
+                                        ? (() => {
+                                            const m = Number(record.late_minutes)
+                                            const h = Math.floor(m / 60)
+                                            const r = m % 60
+                                            let t = `${m} phút`
+                                            if (h > 0) t += ` (${h} giờ${r > 0 ? ` ${r} phút` : ''})`
+                                            return ` (${t})`
+                                          })()
+                                        : ""}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-brand-muted">
+                          Chưa có dữ liệu điểm danh.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           );
         })
-      ) : (
-        <div className="rounded-lg border border-brand-border bg-brand-white px-4 py-8 text-center text-sm text-brand-muted">
-          Chưa có học sinh được liên kết với tài khoản phụ huynh này.
-        </div>
       )}
     </div>
   );

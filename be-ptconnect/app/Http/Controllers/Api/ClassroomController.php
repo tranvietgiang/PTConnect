@@ -56,6 +56,9 @@ class ClassroomController extends Controller
                 Rule::unique('classrooms', 'name')->where('academic_year_id', $academicYear->id),
             ],
             'grade_level' => ['required', 'integer', Rule::in([10, 11, 12])],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'total_lessons' => ['required', 'integer', 'min:1', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -63,11 +66,50 @@ class ClassroomController extends Controller
             'academic_year_id' => $academicYear->id,
             'name' => trim($validated['name']),
             'grade_level' => $validated['grade_level'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'total_lessons' => $validated['total_lessons'],
             'description' => $validated['description'] ?? null,
             'is_active' => true,
         ]);
 
         return $this->success('Class created.', $this->serialize($classroom->load('academicYear')->loadCount('students')), 201);
+    }
+
+    public function update(Request $request, Classroom $classroom): JsonResponse
+    {
+        if ($request->attributes->get('auth_user')?->role !== 'admin') {
+            return $this->error('Forbidden.', 403);
+        }
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('classrooms', 'name')
+                    ->where('academic_year_id', $classroom->academic_year_id)
+                    ->ignore($classroom->id),
+            ],
+            'grade_level' => ['required', 'integer', Rule::in([10, 11, 12])],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'total_lessons' => ['required', 'integer', 'min:1', 'max:100'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $classroom->update([
+            'name' => trim($validated['name']),
+            'grade_level' => $validated['grade_level'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'total_lessons' => $validated['total_lessons'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $validated['is_active'] ?? $classroom->is_active,
+        ]);
+
+        return $this->success('Class updated.', $this->serialize($classroom->refresh()->load('academicYear')->loadCount('students')));
     }
 
     public function show(Classroom $classroom): JsonResponse
@@ -104,6 +146,9 @@ class ClassroomController extends Controller
             'id' => $classroom->id,
             'name' => $classroom->name,
             'grade_level' => $classroom->grade_level,
+            'start_date' => $classroom->start_date?->toDateString(),
+            'end_date' => $classroom->end_date?->toDateString(),
+            'total_lessons' => $classroom->total_lessons,
             'description' => $classroom->description,
             'academic_year' => $classroom->academicYear?->name,
             'students_count' => $classroom->students_count ?? 0,

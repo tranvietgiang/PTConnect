@@ -32,7 +32,7 @@ class AttendanceTest extends TestCase
         ]);
 
         $this->classroom = Classroom::create([
-            'academic_year_id' => $academicYear->id, 'name' => '10A1', 'grade_level' => 10, 'is_active' => true,
+            'academic_year_id' => $academicYear->id, 'name' => '10A1', 'grade_level' => 10, 'total_lessons' => 3, 'is_active' => true,
         ]);
         $this->classroom->users()->attach($this->assistant->id, ['role_in_class' => 'assistant']);
 
@@ -90,6 +90,7 @@ class AttendanceTest extends TestCase
         $response = $this->postJson('/api/attendance', [
             'classroom_id' => $this->classroom->id,
             'attendance_date' => now()->toDateString(),
+            'lesson_number' => 2,
             'records' => [
                 ['student_id' => $this->student1->id, 'status' => 'present'],
                 ['student_id' => $this->student2->id, 'status' => 'late', 'late_minutes' => 15],
@@ -99,6 +100,11 @@ class AttendanceTest extends TestCase
         $response->assertStatus(201)
             ->assertJson(['success' => true, 'message' => 'Attendance submitted.'])
             ->assertJsonStructure(['data' => ['classroom', 'session', 'records']]);
+
+        $this->assertDatabaseHas('attendance_sessions', [
+            'classroom_id' => $this->classroom->id,
+            'lesson_number' => 2,
+        ]);
     }
 
     public function test_assistant_can_submit_attendance(): void
@@ -132,6 +138,20 @@ class AttendanceTest extends TestCase
             'attendance_date' => now()->toDateString(),
             'records' => [
                 ['student_id' => $this->student1->id, 'status' => 'invalid_status'],
+            ],
+        ], $this->authHeader($this->admin));
+
+        $response->assertStatus(422);
+    }
+
+    public function test_attendance_submit_rejects_lesson_outside_class_total_lessons(): void
+    {
+        $response = $this->postJson('/api/attendance', [
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => now()->toDateString(),
+            'lesson_number' => 4,
+            'records' => [
+                ['student_id' => $this->student1->id, 'status' => 'present'],
             ],
         ], $this->authHeader($this->admin));
 

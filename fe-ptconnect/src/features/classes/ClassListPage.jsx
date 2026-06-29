@@ -7,6 +7,7 @@ import Loading from '../../components/common/Loading'
 import Table from '../../components/common/Table'
 import { useAuth } from '../../store/useAuth'
 import { useToast } from '../../store/useToast'
+import { formatDate } from '../../utils/formatDate'
 
 function ClassListPage() {
   const { user } = useAuth()
@@ -70,6 +71,13 @@ function ClassListPage() {
             },
             { header: 'Khối', key: 'grade_level', render: (row) => `Khối ${row.grade_level}` },
             { header: 'Năm học', key: 'academic_year' },
+            {
+              header: 'Thời gian',
+              key: 'duration',
+              render: (row) =>
+                row.start_date && row.end_date ? `${formatDate(row.start_date)} - ${formatDate(row.end_date)}` : '-',
+            },
+            { header: 'Tổng buổi', key: 'total_lessons' },
             { header: 'Sĩ số', key: 'students_count' },
           ]}
           data={classes}

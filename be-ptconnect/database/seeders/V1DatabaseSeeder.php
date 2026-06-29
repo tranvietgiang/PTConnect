@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Storage;
 
 class V1DatabaseSeeder extends Seeder
 {
-    private const MIN_STUDENTS_PER_CLASS = 40;
-    private const MAX_STUDENTS_PER_CLASS = 60;
+    private const MIN_STUDENTS_PER_CLASS = 10;
+    private const MAX_STUDENTS_PER_CLASS = 20;
 
     public function run(): void
     {
@@ -74,7 +74,10 @@ class V1DatabaseSeeder extends Seeder
                     ],
                     [
                         'grade_level' => $classroom['grade_level'],
-                        'description' => 'Lớp dạy thêm môn Sinh học, sĩ số khoảng 60-70 học sinh.',
+                        'start_date' => '2026-06-01',
+                        'end_date' => '2026-12-31',
+                        'total_lessons' => 30,
+                        'description' => 'Lớp dạy thêm môn Sinh học, sĩ số demo khoảng 10-20 học sinh.',
                         'is_active' => true,
                     ],
                 );
@@ -115,6 +118,10 @@ class V1DatabaseSeeder extends Seeder
         $lastNames = ['Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Huynh', 'Phan', 'Vu', 'Dang', 'Bui'];
 
         foreach ($classrooms as $classroomName => $classroom) {
+            if ($classroomName === '12A4') {
+                continue;
+            }
+
             $grade = (int) $classroom->grade_level;
             $classIndex = (int) substr($classroomName, -1);
             $studentsPerClass = random_int(self::MIN_STUDENTS_PER_CLASS, self::MAX_STUDENTS_PER_CLASS);
@@ -228,6 +235,7 @@ class V1DatabaseSeeder extends Seeder
             [
                 'classroom_id' => $classroom->id,
                 'attendance_date' => now()->toDateString(),
+                'lesson_number' => 1,
                 'session_name' => 'Buổi học Sinh học',
             ],
             [

@@ -20,50 +20,58 @@ const navItems = [
     label: "Tổng quan",
     roles: ["admin"],
     to: "/tong-quan",
+    end: true,
   },
   {
     icon: Users,
     label: "Học sinh",
     roles: ["admin", "teacher", "assistant"],
     to: "/hoc-sinh",
+    end: true,
   },
   {
     icon: BookOpen,
     label: "Lớp học",
     roles: ["admin", "teacher", "assistant"],
     to: "/lop-hoc",
+    end: true,
   },
   {
     icon: CalendarCheck,
     label: "Điểm danh",
     roles: ["admin", "assistant"],
     to: "/diem-danh",
+    end: true,
   },
   {
     icon: GraduationCap,
     label: "Điểm số",
     roles: ["admin", "teacher"],
     to: "/diem-so",
+    end: true,
   },
   {
     icon: GraduationCap,
     label: "Điểm số",
     roles: ["parent"],
     to: "/phu-huynh/diem-so",
+    end: true,
   },
   {
     icon: ClipboardList,
     label: "Bài tập",
     roles: ["admin", "teacher", "parent"],
     to: "/bai-tap",
+    end: true,
   },
   {
     icon: Bell,
     label: "Thông báo",
     roles: ["admin", "teacher"],
     to: "/thong-bao",
+    end: true,
   },
-  { icon: Home, label: "Thông tin", roles: ["parent"], to: "/phu-huynh" },
+  { icon: Home, label: "Thông tin", roles: ["parent"], to: "/phu-huynh", end: true },
 ];
 
 function Sidebar({ isOpen, onClose }) {
@@ -113,6 +121,7 @@ function Sidebar({ isOpen, onClose }) {
                       : "text-brand-muted hover:bg-brand-bg hover:text-brand-text"
                   }`
                 }
+                end={item.end}
                 key={item.to}
                 onClick={onClose}
                 to={item.to}

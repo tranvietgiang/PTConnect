@@ -52,6 +52,7 @@ class AttendanceSessionTest extends TestCase
         $this->assertEquals([
             'classroom_id',
             'attendance_date',
+            'lesson_number',
             'session_name',
             'created_by',
             'note',
@@ -64,6 +65,7 @@ class AttendanceSessionTest extends TestCase
         $casts = $session->getCasts();
 
         $this->assertTrue($casts['attendance_date'] === 'date');
+        $this->assertTrue($casts['lesson_number'] === 'integer');
     }
 
     public function test_attendance_session_belongs_to_classroom(): void
@@ -113,6 +115,7 @@ class AttendanceSessionTest extends TestCase
     {
         $this->assertDatabaseHas('attendance_sessions', [
             'classroom_id' => $this->classroom->id,
+            'lesson_number' => 1,
             'session_name' => 'Morning',
             'created_by' => $this->teacher->id,
         ]);

@@ -270,7 +270,23 @@ function AssignmentPage() {
         ).length;
         let visibleSubmissions = submissions;
 
-        if (selectedStatus !== "all") {
+        if (selectedStatus === "graded") {
+          visibleSubmissions = visibleSubmissions.filter(
+            (submission) =>
+              submission.status === "submitted" &&
+              submission.score !== null &&
+              submission.score !== undefined &&
+              submission.score !== "",
+          );
+        } else if (selectedStatus === "ungraded") {
+          visibleSubmissions = visibleSubmissions.filter(
+            (submission) =>
+              submission.status === "submitted" &&
+              (submission.score === null ||
+                submission.score === undefined ||
+                submission.score === ""),
+          );
+        } else if (selectedStatus !== "all") {
           visibleSubmissions = visibleSubmissions.filter(
             (submission) => submission.status === selectedStatus,
           );
@@ -617,14 +633,15 @@ function AssignmentPage() {
 
     return (
       <div className="mt-3 rounded-md border border-brand-border bg-brand-bg p-3">
-        <div className="grid gap-2 sm:grid-cols-[88px_minmax(160px,1fr)_auto] sm:items-end">
-          <label className="block">
+        <div className="flex items-end gap-2">
+          <label className="block w-24 shrink-0">
             <span className="mb-1 block text-xs font-semibold text-brand-muted">
               Điểm
             </span>
             <input
               className="h-9 w-full rounded-md border border-brand-border bg-brand-white px-2 text-sm text-brand-text outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal-soft"
               inputMode="decimal"
+              maxLength={4}
               onChange={(event) =>
                 updateGradingForm(submission, "score", event.target.value)
               }
@@ -633,26 +650,8 @@ function AssignmentPage() {
               value={formData.score}
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-brand-muted">
-              Nhận xét
-            </span>
-            <input
-              className="h-9 w-full rounded-md border border-brand-border bg-brand-white px-2 text-sm text-brand-text outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal-soft"
-              onChange={(event) =>
-                updateGradingForm(
-                  submission,
-                  "teacher_comment",
-                  event.target.value,
-                )
-              }
-              placeholder="Nhập nhận xét"
-              type="text"
-              value={formData.teacher_comment}
-            />
-          </label>
           <Button
-            className="h-9 px-3"
+            className="h-9 shrink-0 px-3"
             disabled={savingGradeId === submission.id}
             icon={Save}
             onClick={() => handleSaveGrade(submission)}
@@ -661,6 +660,24 @@ function AssignmentPage() {
             {savingGradeId === submission.id ? "Đang lưu" : "Lưu điểm"}
           </Button>
         </div>
+        <label className="mt-2 block">
+          <span className="mb-1 block text-xs font-semibold text-brand-muted">
+            Nhận xét
+          </span>
+          <textarea
+            className="w-full rounded-md border border-brand-border bg-brand-white px-2 py-1.5 text-sm text-brand-text outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal-soft"
+            onChange={(event) =>
+              updateGradingForm(
+                submission,
+                "teacher_comment",
+                event.target.value,
+              )
+            }
+            placeholder="Nhập nhận xét"
+            rows={2}
+            value={formData.teacher_comment}
+          />
+        </label>
       </div>
     );
   };
@@ -1025,6 +1042,8 @@ function AssignmentPage() {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="submitted">Đã nộp</option>
                   <option value="not_submitted">Chưa nộp</option>
+                  <option value="graded">Đã chấm</option>
+                  <option value="ungraded">Chưa chấm</option>
                 </Select>
               </div>
               <p className="text-sm font-medium text-brand-muted">

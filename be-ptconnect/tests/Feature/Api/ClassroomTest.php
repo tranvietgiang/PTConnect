@@ -79,6 +79,9 @@ class ClassroomTest extends TestCase
         $response = $this->postJson('/api/classes', [
             'name' => '12A1',
             'grade_level' => 12,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-12-31',
+            'total_lessons' => 30,
             'description' => 'Lop 12 chuyen Toan',
         ], $this->authHeader($this->admin));
 
@@ -87,9 +90,37 @@ class ClassroomTest extends TestCase
                 'success' => true,
                 'message' => 'Class created.',
             ])
-            ->assertJsonStructure(['data' => ['id', 'name', 'grade_level']]);
+            ->assertJsonStructure(['data' => ['id', 'name', 'grade_level', 'start_date', 'end_date', 'total_lessons']]);
 
-        $this->assertDatabaseHas('classrooms', ['name' => '12A1', 'grade_level' => 12]);
+        $this->assertDatabaseHas('classrooms', ['name' => '12A1', 'grade_level' => 12, 'total_lessons' => 30]);
+    }
+
+    public function test_admin_can_update_class_schedule(): void
+    {
+        $classroom = Classroom::create([
+            'academic_year_id' => $this->academicYear->id,
+            'name' => '10A1',
+            'grade_level' => 10,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-12-31',
+            'total_lessons' => 30,
+            'is_active' => true,
+        ]);
+
+        $response = $this->putJson("/api/classes/{$classroom->id}", [
+            'name' => '10A1',
+            'grade_level' => 10,
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-11-30',
+            'total_lessons' => 24,
+            'description' => 'Updated',
+        ], $this->authHeader($this->admin));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.total_lessons', 24)
+            ->assertJsonPath('data.start_date', '2026-07-01');
+
+        $this->assertDatabaseHas('classrooms', ['id' => $classroom->id, 'total_lessons' => 24]);
     }
 
     public function test_teacher_cannot_create_class(): void

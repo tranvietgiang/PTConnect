@@ -21,6 +21,8 @@ Route::middleware('jwt.auth')->group(function (): void {
     Route::get('/classes', [ClassroomController::class, 'index']);
     Route::get('/classes/{classroom}', [ClassroomController::class, 'show']);
     Route::post('/classes', [ClassroomController::class, 'store'])->middleware('role:admin');
+    Route::put('/classes/{classroom}', [ClassroomController::class, 'update'])->middleware('role:admin');
+    Route::patch('/classes/{classroom}', [ClassroomController::class, 'update'])->middleware('role:admin');
 
     Route::get('/students', [StudentController::class, 'index']);
     Route::post('/students', [StudentController::class, 'store'])->middleware('role:admin');
@@ -30,6 +32,7 @@ Route::middleware('jwt.auth')->group(function (): void {
     Route::get('/attendance/today', [AttendanceController::class, 'today'])->middleware('role:admin,assistant');
     Route::post('/attendance', [AttendanceController::class, 'store'])->middleware('role:admin,assistant');
     Route::get('/attendance/history', [AttendanceController::class, 'history'])->middleware('role:admin,assistant');
+    Route::get('/attendance/parent', [AttendanceController::class, 'parentHistory'])->middleware('role:parent');
 
     Route::get('/assignments', [AssignmentController::class, 'index']);
     Route::post('/assignments', [AssignmentController::class, 'store'])->middleware('role:admin,teacher');
