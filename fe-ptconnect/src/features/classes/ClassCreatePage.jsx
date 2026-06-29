@@ -17,6 +17,9 @@ function ClassCreatePage() {
   const [form, setForm] = useState({
     name: '',
     grade_level: '',
+    start_date: '',
+    end_date: '',
+    total_lessons: '30',
     description: '',
   })
 
@@ -31,14 +34,23 @@ function ClassCreatePage() {
 
   const validateForm = () => {
     const nextErrors = {}
+    const totalLessons = Number(form.total_lessons)
 
     if (!form.name.trim()) nextErrors.name = 'Vui lòng nhập tên lớp.'
     if (!form.grade_level) nextErrors.grade_level = 'Vui lòng chọn khối lớp.'
+    if (!form.start_date) nextErrors.start_date = 'Vui lòng chọn ngày bắt đầu.'
+    if (!form.end_date) nextErrors.end_date = 'Vui lòng chọn ngày kết thúc.'
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      nextErrors.end_date = 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.'
+    }
+    if (!Number.isInteger(totalLessons) || totalLessons < 1 || totalLessons > 100) {
+      nextErrors.total_lessons = 'Tổng số buổi phải từ 1 đến 100.'
+    }
 
     setErrors(nextErrors)
 
     if (Object.keys(nextErrors).length > 0) {
-      toast.error('Thiếu thông tin lớp học', 'Vui lòng nhập tên lớp và khối lớp.')
+      toast.error('Thiếu thông tin lớp học', 'Vui lòng kiểm tra tên lớp, khối, thời gian và tổng số buổi.')
       return false
     }
 
@@ -56,6 +68,9 @@ function ClassCreatePage() {
       await classApi.create({
         name: form.name.trim(),
         grade_level: Number(form.grade_level),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        total_lessons: Number(form.total_lessons),
         description: form.description.trim() || null,
       })
       toast.success('Đã thêm lớp học', 'Lớp học mới đã được tạo.')
@@ -96,6 +111,32 @@ function ClassCreatePage() {
             <option value="11">Khối 11</option>
             <option value="12">Khối 12</option>
           </Select>
+          <Input
+            error={errors.start_date}
+            id="class-start-date"
+            label="Ngày bắt đầu"
+            onChange={(event) => updateForm('start_date', event.target.value)}
+            type="date"
+            value={form.start_date}
+          />
+          <Input
+            error={errors.end_date}
+            id="class-end-date"
+            label="Ngày kết thúc"
+            onChange={(event) => updateForm('end_date', event.target.value)}
+            type="date"
+            value={form.end_date}
+          />
+          <Input
+            error={errors.total_lessons}
+            id="class-total-lessons"
+            label="Tổng số buổi"
+            max="100"
+            min="1"
+            onChange={(event) => updateForm('total_lessons', event.target.value)}
+            type="number"
+            value={form.total_lessons}
+          />
           <Input
             className="sm:col-span-2"
             id="class-description"

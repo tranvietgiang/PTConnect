@@ -11,6 +11,7 @@ class AttendanceSession extends Model
     protected $fillable = [
         'classroom_id',
         'attendance_date',
+        'lesson_number',
         'session_name',
         'created_by',
         'note',
@@ -20,6 +21,7 @@ class AttendanceSession extends Model
     {
         return [
             'attendance_date' => 'date',
+            'lesson_number' => 'integer',
         ];
     }
 

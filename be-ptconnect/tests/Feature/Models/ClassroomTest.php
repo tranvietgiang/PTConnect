@@ -48,6 +48,9 @@ class ClassroomTest extends TestCase
             'academic_year_id',
             'name',
             'grade_level',
+            'start_date',
+            'end_date',
+            'total_lessons',
             'description',
             'is_active',
         ], $classroom->getFillable());
@@ -117,6 +120,23 @@ class ClassroomTest extends TestCase
         ]);
 
         $this->assertIsInt($classroom->grade_level);
+    }
+
+    public function test_classroom_schedule_fields_are_casted(): void
+    {
+        $classroom = Classroom::create([
+            'academic_year_id' => $this->academicYear->id,
+            'name' => '10A2',
+            'grade_level' => 10,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-12-31',
+            'total_lessons' => 30,
+            'is_active' => true,
+        ]);
+
+        $this->assertSame('2026-06-01', $classroom->start_date->toDateString());
+        $this->assertSame('2026-12-31', $classroom->end_date->toDateString());
+        $this->assertIsInt($classroom->total_lessons);
     }
 
     public function test_classroom_has_many_attendance_sessions(): void

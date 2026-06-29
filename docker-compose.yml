@@ -13,6 +13,11 @@ services:
       - "3306:3306"
     volumes:
       - ptconnect_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./be-ptconnect
@@ -38,6 +43,25 @@ services:
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
+
+  queue-worker:
+    build: ./be-ptconnect
+    container_name: ptconnect-queue-worker
+    volumes:
+      - ./be-ptconnect:/var/www/html
+      - /var/www/html/vendor
+    working_dir: /var/www/html
+    command:
+      - /bin/sh
+      - -c
+      - |
+        until php artisan queue:work --sleep=3 --tries=3; do
+          echo "Queue worker exited, restarting in 2s..."
+          sleep 2
+        done
+    restart: unless-stopped
+    depends_on:
+      - mysql
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

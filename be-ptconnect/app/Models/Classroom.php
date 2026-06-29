@@ -13,6 +13,9 @@ class Classroom extends Model
         'academic_year_id',
         'name',
         'grade_level',
+        'start_date',
+        'end_date',
+        'total_lessons',
         'description',
         'is_active',
     ];
@@ -21,6 +24,9 @@ class Classroom extends Model
     {
         return [
             'grade_level' => 'integer',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'total_lessons' => 'integer',
             'is_active' => 'boolean',
         ];
     }

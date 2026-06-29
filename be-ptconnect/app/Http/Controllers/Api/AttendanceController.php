@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AttendanceNotification;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
 use App\Models\Classroom;
 use App\Models\EmailLog;
 use App\Models\Notification;
 use App\Models\NotificationRecipient;
+use App\Models\ParentProfile;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
@@ -22,6 +25,7 @@ class AttendanceController extends Controller
         $validated = $request->validate([
             'classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')],
             'date' => ['nullable', 'date'],
+            'lesson_number' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $classroom = Classroom::query()
@@ -32,10 +36,17 @@ class AttendanceController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
+        $lessonNumber = (int) ($validated['lesson_number'] ?? 1);
+
+        if (! $this->lessonNumberIsValid($classroom, $lessonNumber)) {
+            return $this->error('Lesson number is outside the class lesson range.', 422);
+        }
+
         $date = $validated['date'] ?? now()->toDateString();
         $session = AttendanceSession::query()
             ->where('classroom_id', $classroom->id)
             ->whereDate('attendance_date', $date)
+            ->where('lesson_number', $lessonNumber)
             ->with('attendanceRecords.student')
             ->first();
 
@@ -51,6 +62,7 @@ class AttendanceController extends Controller
         $validated = $request->validate([
             'classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')],
             'attendance_date' => ['required', 'date'],
+            'lesson_number' => ['nullable', 'integer', 'min:1'],
             'session_name' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
             'records' => ['required', 'array', 'min:1'],
@@ -66,6 +78,12 @@ class AttendanceController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
+        $lessonNumber = (int) ($validated['lesson_number'] ?? 1);
+
+        if (! $this->lessonNumberIsValid($classroom, $lessonNumber)) {
+            return $this->error('Lesson number is outside the class lesson range.', 422);
+        }
+
         $classStudentIds = $classroom->students->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
         foreach ($validated['records'] as $record) {
@@ -78,9 +96,10 @@ class AttendanceController extends Controller
             [
                 'classroom_id' => $classroom->id,
                 'attendance_date' => $validated['attendance_date'],
+                'lesson_number' => $lessonNumber,
             ],
             [
-                'session_name' => $validated['session_name'] ?? 'Buổi học Sinh học',
+                'session_name' => $validated['session_name'] ?? "Lesson {$lessonNumber}",
                 'created_by' => $request->attributes->get('auth_user')->id,
                 'note' => $validated['note'] ?? null,
             ],
@@ -123,6 +142,42 @@ class AttendanceController extends Controller
         ], 201);
     }
 
+    public function parentHistory(Request $request): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $studentIds = ParentProfile::query()
+            ->where('user_id', $user->id)
+            ->pluck('student_id')
+            ->unique()
+            ->values()
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $records = AttendanceRecord::query()
+            ->whereIn('student_id', $studentIds)
+            ->whereHas('attendanceSession')
+            ->with('attendanceSession.classroom:id,name', 'student:id,full_name')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'student_id' => $record->student_id,
+                'student_name' => $record->student?->full_name,
+                'attendance_date' => $record->attendanceSession?->attendance_date?->toDateString(),
+                'lesson_number' => $record->attendanceSession?->lesson_number,
+                'session_name' => $record->attendanceSession?->session_name,
+                'class_name' => $record->attendanceSession?->classroom?->name,
+                'status' => $record->status,
+                'status_label' => $this->statusLabel($record->status),
+                'late_minutes' => $record->late_minutes,
+            ])
+            ->values()
+            ->all();
+
+        return $this->success('Attendance records retrieved.', $records);
+    }
+
     public function history(Request $request): JsonResponse
     {
         $user = $request->attributes->get('auth_user');
@@ -146,6 +201,7 @@ class AttendanceController extends Controller
             'id' => $session->id,
             'class_name' => $session->classroom?->name,
             'attendance_date' => $session->attendance_date?->toDateString(),
+            'lesson_number' => $session->lesson_number,
             'session_name' => $session->session_name,
             'present' => $session->present_count,
             'late' => $session->late_count,
@@ -214,6 +270,23 @@ class AttendanceController extends Controller
                     'error_message' => null,
                 ],
             );
+
+            try {
+                Mail::to($parent->email, $parent->full_name)
+                    ->queue(new AttendanceNotification(
+                        title: $notification->title,
+                        content: $notification->content,
+                        studentName: $student->full_name,
+                        className: $classroom->name,
+                        date: $session->attendance_date->toDateString(),
+                        statusLabel: $this->statusLabel($record->status),
+                    ));
+            } catch (\Throwable $e) {
+                EmailLog::query()
+                    ->where('recipient_email', $parent->email)
+                    ->where('related_id', $record->id)
+                    ->update(['error_message' => $e->getMessage()]);
+            }
         }
     }
 
@@ -245,6 +318,7 @@ class AttendanceController extends Controller
             'id' => $session->id,
             'classroom_id' => $session->classroom_id,
             'attendance_date' => $session->attendance_date?->toDateString(),
+            'lesson_number' => $session->lesson_number,
             'session_name' => $session->session_name,
             'note' => $session->note,
         ];
@@ -256,7 +330,17 @@ class AttendanceController extends Controller
             'id' => $classroom->id,
             'name' => $classroom->name,
             'grade_level' => $classroom->grade_level,
+            'start_date' => $classroom->start_date?->toDateString(),
+            'end_date' => $classroom->end_date?->toDateString(),
+            'total_lessons' => $classroom->total_lessons,
         ];
+    }
+
+    private function lessonNumberIsValid(Classroom $classroom, int $lessonNumber): bool
+    {
+        $totalLessons = (int) ($classroom->total_lessons ?: 1);
+
+        return $lessonNumber >= 1 && $lessonNumber <= $totalLessons;
     }
 
     private function statusLabel(?string $status): string

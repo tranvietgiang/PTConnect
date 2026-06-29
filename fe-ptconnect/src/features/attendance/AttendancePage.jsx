@@ -51,7 +51,8 @@ function AttendancePage() {
   const [selectedClass, setSelectedClass] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [attendanceDate, setAttendanceDate] = useState(today())
-  const [sessionName, setSessionName] = useState('Buổi học Sinh học')
+  const [lessonNumber, setLessonNumber] = useState('1')
+  const [sessionName, setSessionName] = useState('Lesson 1')
   const [records, setRecords] = useState([])
   const [loadingClasses, setLoadingClasses] = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
@@ -104,6 +105,13 @@ function AttendancePage() {
     [classes, selectedClass],
   )
 
+  const lessonOptions = useMemo(() => {
+    const totalLessons = Number(selectedClassroom?.total_lessons || 1)
+    const safeTotalLessons = Number.isInteger(totalLessons) && totalLessons > 0 ? totalLessons : 1
+
+    return Array.from({ length: safeTotalLessons }, (_, index) => index + 1)
+  }, [selectedClassroom])
+
   const visibleRecords = useMemo(() => {
     const keyword = normalizeSearch(studentSearch)
 
@@ -116,7 +124,10 @@ function AttendancePage() {
 
   useEffect(() => {
     if (!selectedClass) {
-      setRecords([])
+      return
+    }
+
+    if (selectedClassroom && Number(lessonNumber) > Number(selectedClassroom.total_lessons || 1)) {
       return
     }
 
@@ -129,11 +140,12 @@ function AttendancePage() {
         const response = await attendanceApi.getToday({
           classroom_id: selectedClass,
           date: attendanceDate,
+          lesson_number: Number(lessonNumber),
         })
         const data = response.data || {}
 
         if (mounted) {
-          setSessionName(data.session?.session_name || 'Buổi học Sinh học')
+          setSessionName(data.session?.session_name || `Lesson ${lessonNumber}`)
           setRecords(
             (data.records || []).map((record) => ({
               ...record,
@@ -144,7 +156,7 @@ function AttendancePage() {
           )
         }
       } catch (error) {
-        toast.error('Không tải được dữ liệu điểm danh', error.message || 'Vui lòng thử lại sau.')
+        toast.error('Không tải được dữ liệu điểm danh', 'Vui lòng thử lại sau.')
       } finally {
         if (mounted) {
           setLoadingRecords(false)
@@ -157,7 +169,7 @@ function AttendancePage() {
     return () => {
       mounted = false
     }
-  }, [selectedClass, attendanceDate])
+  }, [selectedClass, selectedClassroom, attendanceDate, lessonNumber])
 
   const summary = useMemo(
     () =>
@@ -201,15 +213,27 @@ function AttendancePage() {
       return
     }
 
-    setSelectedClass((current) => {
-      const currentClass = classes.find((classroom) => String(classroom.id) === String(current))
+    const currentClass = classes.find((classroom) => String(classroom.id) === String(selectedClass))
+    const nextClass = currentClass && String(currentClass.grade_level) === String(value) ? currentClass : nextClasses[0]
+    const nextClassId = String(nextClass?.id || '')
 
-      if (currentClass && String(currentClass.grade_level) === String(value)) {
-        return current
-      }
+    setSelectedClass(nextClassId)
+    setLessonNumber('1')
+    setSessionName('Lesson 1')
 
-      return String(nextClasses[0]?.id || '')
-    })
+    if (!nextClassId) {
+      setRecords([])
+    }
+  }
+
+  const handleClassChange = (value) => {
+    setSelectedClass(value)
+    setLessonNumber('1')
+    setSessionName('Lesson 1')
+
+    if (!value) {
+      setRecords([])
+    }
   }
 
   const handleSubmit = async () => {
@@ -224,7 +248,8 @@ function AttendancePage() {
       const response = await attendanceApi.submit({
         classroom_id: Number(selectedClass),
         attendance_date: attendanceDate,
-        session_name: sessionName.trim() || 'Buổi học Sinh học',
+        lesson_number: Number(lessonNumber),
+        session_name: sessionName.trim() || `Lesson ${lessonNumber}`,
         records: records.map((record) => ({
           student_id: record.student_id,
           status: record.status,
@@ -286,7 +311,7 @@ function AttendancePage() {
               <Select
                 id="attendance-class"
                 label="Lớp"
-                onChange={(event) => setSelectedClass(event.target.value)}
+                onChange={(event) => handleClassChange(event.target.value)}
                 value={selectedClass}
               >
                 <option value="">Chọn lớp</option>
@@ -310,12 +335,21 @@ function AttendancePage() {
                 type="date"
                 value={attendanceDate}
               />
-              <Input
-                id="attendance-session"
+              <Select
+                id="attendance-lesson"
                 label="Buổi học"
-                onChange={(event) => setSessionName(event.target.value)}
-                value={sessionName}
-              />
+                onChange={(event) => {
+                  setLessonNumber(event.target.value)
+                  setSessionName(`Lesson ${event.target.value}`)
+                }}
+                value={lessonNumber}
+              >
+                {lessonOptions.map((lesson) => (
+                  <option key={lesson} value={lesson}>
+                    Lesson {lesson}
+                  </option>
+                ))}
+              </Select>
             </div>
             {selectedClassroom ? (
               <p className="mt-3 text-sm text-brand-muted">
@@ -350,31 +384,10 @@ function AttendancePage() {
                   render: (row) => <StatusBadge status={row.status} />,
                 },
                 {
-                  header: 'Đi muộn',
-                  key: 'late_minutes',
-                  render: (row) =>
-                    row.status === 'late' ? (
-                      <Input
-                        className="w-24"
-                        id={`late-${row.student_id}`}
-                        min="0"
-                        onChange={(event) =>
-                          updateRecord(row.student_id, {
-                            late_minutes: event.target.value,
-                          })
-                        }
-                        type="number"
-                        value={row.late_minutes}
-                      />
-                    ) : (
-                      <span className="text-brand-muted">-</span>
-                    ),
-                },
-                {
                   header: 'Thao tác',
                   key: 'actions',
                   render: (row) => (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         className="h-9 px-3"
                         icon={Check}
@@ -391,6 +404,28 @@ function AttendancePage() {
                       >
                         Đi muộn
                       </Button>
+                      {row.status === 'late' && (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            className="w-20"
+                            id={`late-${row.student_id}`}
+                            min="0"
+                            onChange={(event) =>
+                              updateRecord(row.student_id, {
+                                late_minutes: event.target.value,
+                              })
+                            }
+                            type="number"
+                            value={row.late_minutes}
+                          />
+                          <span className="text-xs text-brand-muted">phút</span>
+                          {Number(row.late_minutes) >= 60 && (
+                            <span className="text-xs font-medium text-brand-muted">
+                              ({Math.floor(Number(row.late_minutes) / 60)} giờ{Number(row.late_minutes) % 60 > 0 ? ` ${Number(row.late_minutes) % 60} phút` : ''})
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <Button
                         className="h-9 px-3"
                         icon={X}
