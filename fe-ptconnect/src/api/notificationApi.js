@@ -1,7 +1,6 @@
 import axiosClient from './axiosClient'
 
-export const notificationApi = {
-  getAll: (params) => axiosClient.get('/notifications', { params }),
-  send: (payload) => axiosClient.post('/notifications', payload),
-  markAsRead: (id) => axiosClient.patch(`/notifications/${id}/read`),
+export const emailNotificationApi = {
+  getAll: (params) => axiosClient.get('/email-notifications', { params }),
+  send: (payload) => axiosClient.post('/email-notifications', payload),
 }

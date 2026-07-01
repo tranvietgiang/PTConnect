@@ -8,10 +8,6 @@ import LoginPage from '../features/auth/LoginPage'
 import ClassCreatePage from '../features/classes/ClassCreatePage'
 import ClassDetailPage from '../features/classes/ClassDetailPage'
 import ClassListPage from '../features/classes/ClassListPage'
-import NotificationPage from '../features/notifications/NotificationPage'
-import ParentDashboardPage from '../features/parents/ParentDashboardPage'
-import ParentLoginPage from '../features/parents/ParentLoginPage'
-import ParentScorePage from '../features/scores/ParentScorePage'
 import ScoreListPage from '../features/scores/ScoreListPage'
 import ScoreReportPage from '../features/scores/ScoreReportPage'
 import StudentCreatePage from '../features/students/StudentCreatePage'
@@ -26,9 +22,9 @@ import { useAuth } from '../store/useAuth'
 import { getDefaultRouteByRole } from '../utils/roleRedirect'
 import ProtectedRoute from './ProtectedRoute'
 
-const staffRoles = ['admin', 'teacher', 'assistant']
-const teacherRoles = ['admin', 'teacher']
-const attendanceRoles = ['admin', 'assistant']
+const schoolRoles = ['school_admin', 'system_admin']
+const staffRoles = ['school_admin', 'system_admin', 'teacher', 'assistant']
+const attendanceRoles = ['school_admin', 'system_admin', 'teacher', 'assistant']
 
 function RoleRedirect() {
   const { checkingAuth, isAuthenticated, user } = useAuth()
@@ -37,7 +33,12 @@ function RoleRedirect() {
     return <Loading label="Đang kiểm tra đăng nhập" />
   }
 
-  return <Navigate replace to={isAuthenticated ? getDefaultRouteByRole(user?.role) : '/dang-nhap'} />
+  return (
+    <Navigate
+      replace
+      to={isAuthenticated ? getDefaultRouteByRole(user?.role) : '/dang-nhap'}
+    />
+  )
 }
 
 function AppRoutes() {
@@ -46,7 +47,6 @@ function AppRoutes() {
       <Routes>
         <Route element={<AuthLayout />}>
           <Route element={<LoginPage />} path="/dang-nhap" />
-          <Route element={<ParentLoginPage />} path="/phu-huynh/dang-nhap" />
         </Route>
 
         <Route element={<HomePage />} path="/" />
@@ -54,7 +54,7 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route element={<ProtectedRoute allowedRoles={schoolRoles} />}>
               <Route element={<DashboardPage />} path="/tong-quan" />
             </Route>
 
@@ -70,34 +70,28 @@ function AppRoutes() {
               <Route element={<AttendanceHistoryPage />} path="/diem-danh/lich-su" />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route element={<ProtectedRoute allowedRoles={schoolRoles} />}>
               <Route element={<StudentCreatePage />} path="/hoc-sinh/them" />
               <Route element={<ClassCreatePage />} path="/lop-hoc/them" />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={teacherRoles} />}>
+            <Route element={<ProtectedRoute allowedRoles={['school_admin', 'system_admin', 'teacher', 'assistant']} />}>
               <Route element={<ScoreListPage />} path="/diem-so" />
-            </Route>
-
-            <Route element={<ProtectedRoute allowedRoles={teacherRoles} />}>
               <Route element={<ScoreReportPage />} path="/diem-so/bao-cao" />
-              <Route element={<NotificationPage />} path="/thong-bao" />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'parent']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['school_admin', 'system_admin', 'teacher', 'assistant', 'student']} />}>
               <Route element={<AssignmentPage />} path="/bai-tap" />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
-              <Route element={<ParentDashboardPage />} path="/phu-huynh" />
-              <Route element={<ParentScorePage />} path="/phu-huynh/diem-so" />
+            <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+              <Route element={<ScoreListPage />} path="/diem-cua-toi" />
             </Route>
           </Route>
         </Route>
 
         <Route element={<RoleRedirect />} path="/home" />
         <Route element={<Navigate replace to="/dang-nhap" />} path="/login" />
-        <Route element={<Navigate replace to="/phu-huynh/dang-nhap" />} path="/parent-login" />
         <Route element={<RoleRedirect />} path="/dashboard" />
         <Route element={<NotFoundPage />} path="*" />
       </Routes>

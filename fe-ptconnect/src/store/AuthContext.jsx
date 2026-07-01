@@ -94,7 +94,6 @@ export function AuthProvider({ children }) {
 
     const response = await authApi.login({
       email: credentials.email,
-      username: credentials.username,
       password: credentials.password,
       remember_me: Boolean(credentials.remember_me),
     })

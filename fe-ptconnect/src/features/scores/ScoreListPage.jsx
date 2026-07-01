@@ -19,10 +19,10 @@ function normalizeSearch(value) {
     .trim()
 }
 
-function getSubmittedTime(score) {
-  if (!score.submitted_at) return 0
+function getRecordTime(score) {
+  if (!score.updated_at && !score.created_at) return 0
 
-  const timestamp = Date.parse(score.submitted_at)
+  const timestamp = Date.parse(score.updated_at || score.created_at)
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 

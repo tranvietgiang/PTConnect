@@ -28,7 +28,7 @@ function ClassDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const canEdit = user?.role === 'admin'
+  const canEdit = user?.role === 'school_admin' || user?.role === 'system_admin'
 
   useEffect(() => {
     let mounted = true

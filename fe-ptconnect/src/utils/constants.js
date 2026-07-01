@@ -1,7 +1,9 @@
 export const USER_ROLES = {
-  ADMIN: 'admin',
+  SYSTEM_ADMIN: 'system_admin',
+  SCHOOL_ADMIN: 'school_admin',
   TEACHER: 'teacher',
-  PARENT: 'parent',
+  ASSISTANT: 'assistant',
+  STUDENT: 'student',
 }
 
 export const ATTENDANCE_STATUS = {

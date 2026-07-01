@@ -77,7 +77,7 @@ function StudentListPage() {
             Quản lý hồ sơ học sinh và phân lớp.
           </p>
         </div>
-        {user?.role === "admin" ? (
+        {user?.role === "school_admin" || user?.role === "system_admin" ? (
           <Button as={Link} icon={Plus} to="/hoc-sinh/them">
             Thêm học sinh
           </Button>

@@ -120,9 +120,9 @@ function isSubmitted(row) {
 function AssignmentPage() {
   const { user } = useAuth();
   const toast = useToast();
-  const canCreate = ["admin", "teacher"].includes(user?.role);
-  const canAssignByGrade = user?.role === "admin";
-  const isParent = user?.role === "parent";
+  const canCreate = ["school_admin", "system_admin", "teacher"].includes(user?.role);
+  const canAssignByGrade = ["school_admin", "system_admin"].includes(user?.role);
+  const isStudent = user?.role === "student";
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedGradeLevel, setSelectedGradeLevel] = useState("all");
@@ -210,7 +210,7 @@ function AssignmentPage() {
         )
       : null;
 
-    if (isParent) {
+    if (isStudent) {
       return assignments;
     }
 
@@ -319,7 +319,7 @@ function AssignmentPage() {
   }, [
     assignments,
     classes,
-    isParent,
+    isStudent,
     selectedClass,
     selectedClassId,
     selectedGradeLevel,
@@ -529,7 +529,7 @@ function AssignmentPage() {
 
   const renderScope = (row) => {
     if (row.class_name) return `Lớp ${row.class_name}`;
-    if (!isParent && selectedClass && row.grade_level && !row.classroom_id) {
+    if (!isStudent && selectedClass && row.grade_level && !row.classroom_id) {
       return `Khối ${row.grade_level} - lớp ${selectedClass.name}`;
     }
     if (row.grade_level) return `Khối ${row.grade_level}`;
@@ -975,7 +975,7 @@ function AssignmentPage() {
         <Loading label="Đang tải bài tập" />
       ) : (
         <div className="space-y-4">
-          {!isParent ? (
+          {!isStudent ? (
             <div className="flex flex-col gap-3 rounded-lg border border-brand-border bg-brand-white p-4 shadow-sm md:flex-row md:items-end md:justify-between">
               <div className="grid w-full gap-3 md:grid-cols-[120px_130px_minmax(190px,240px)_minmax(220px,300px)_minmax(180px,220px)] md:items-end">
                 <label className="block">
@@ -1053,7 +1053,7 @@ function AssignmentPage() {
             </div>
           ) : null}
 
-          {isParent
+          {isStudent
             ? renderParentAssignmentList()
             : renderStaffAssignmentList()}
         </div>

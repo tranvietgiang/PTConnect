@@ -23,7 +23,7 @@ function ClassCreatePage() {
     description: '',
   })
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'school_admin' && user?.role !== 'system_admin') {
     return <Navigate replace to="/khong-co-quyen" />
   }
 

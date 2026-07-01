@@ -48,7 +48,7 @@ function ClassListPage() {
           <h1 className="text-2xl font-bold text-brand-text">Lớp học</h1>
           <p className="mt-1 text-sm text-brand-muted">Xem danh sách lớp và sĩ số hiện tại.</p>
         </div>
-        {user?.role === 'admin' ? (
+        {user?.role === 'school_admin' || user?.role === 'system_admin' ? (
           <Button as={Link} icon={Plus} to="/lop-hoc/them">
             Thêm lớp học
           </Button>
