@@ -12,11 +12,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('assignment_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
-            $table->string('submitted_file_path');
-            $table->string('submitted_file_name');
-            $table->string('submitted_file_mime')->nullable();
+            $table->string('submitted_file_path', 255);
+            $table->string('submitted_file_name', 100);
+            $table->string('submitted_file_mime', 100)->nullable();
             $table->timestamp('submitted_at');
-            $table->string('status')->default('submitted')->index();
+            $table->string('status', 20)->default('submitted')->index();
             $table->decimal('score', 4, 2)->nullable();
             $table->text('teacher_comment')->nullable();
             $table->timestamps();

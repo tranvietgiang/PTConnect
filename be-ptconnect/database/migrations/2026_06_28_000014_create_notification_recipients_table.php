@@ -13,10 +13,10 @@ return new class extends Migration
             $table->foreignId('notification_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parent_id')->constrained('parents')->cascadeOnDelete();
             $table->foreignId('student_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('email');
+            $table->string('email', 191);
             $table->timestamp('sent_at')->nullable()->index();
             $table->timestamp('read_at')->nullable()->index();
-            $table->string('status')->default('pending')->index();
+            $table->string('status', 20)->default('pending')->index();
             $table->timestamps();
 
             $table->index(['notification_id', 'parent_id']);

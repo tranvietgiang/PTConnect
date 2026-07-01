@@ -10,6 +10,12 @@ import Select from '../../components/common/Select'
 import Table from '../../components/common/Table'
 import { useToast } from '../../store/useToast'
 
+const emailStatusOptions = {
+  not_sent: { label: 'Chưa gửi', tone: 'bg-brand-bg text-brand-muted' },
+  sent: { label: 'Đã gửi', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
+  failed: { label: 'Gửi lỗi', tone: 'bg-red-50 text-brand-red' },
+}
+
 const statusOptions = {
   present: { label: 'Có mặt', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
   late: { label: 'Đi muộn', tone: 'bg-amber-50 text-amber-700' },
@@ -27,6 +33,16 @@ function today() {
 
 function StatusBadge({ status }) {
   const option = statusOptions[status] || statusOptions.present
+
+  return (
+    <span className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-semibold ${option.tone}`}>
+      {option.label}
+    </span>
+  )
+}
+
+function EmailStatusBadge({ status }) {
+  const option = emailStatusOptions[status] || emailStatusOptions.not_sent
 
   return (
     <span className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-semibold ${option.tone}`}>
@@ -54,6 +70,7 @@ function AttendancePage() {
   const [lessonNumber, setLessonNumber] = useState('1')
   const [sessionName, setSessionName] = useState('Lesson 1')
   const [records, setRecords] = useState([])
+  const [sessionStatus, setSessionStatus] = useState('open')
   const [loadingClasses, setLoadingClasses] = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -146,11 +163,13 @@ function AttendancePage() {
 
         if (mounted) {
           setSessionName(data.session?.session_name || `Lesson ${lessonNumber}`)
+          setSessionStatus(data.session?.status || 'open')
           setRecords(
             (data.records || []).map((record) => ({
               ...record,
               row_key: record.student_id,
               status: record.status || 'present',
+              email_status: record.email_status || 'not_sent',
               late_minutes: record.status === 'late' ? record.late_minutes || 15 : 0,
             })),
           )
@@ -199,6 +218,7 @@ function AttendancePage() {
   const setStatus = (studentId, status) => {
     updateRecord(studentId, {
       status,
+      email_status: 'not_sent',
       late_minutes: status === 'late' ? 15 : 0,
     })
   }
@@ -230,6 +250,7 @@ function AttendancePage() {
     setSelectedClass(value)
     setLessonNumber('1')
     setSessionName('Lesson 1')
+    setSessionStatus('open')
 
     if (!value) {
       setRecords([])
@@ -239,6 +260,11 @@ function AttendancePage() {
   const handleSubmit = async () => {
     if (!selectedClass) {
       toast.error('Chưa chọn lớp', 'Vui lòng chọn lớp trước khi gửi điểm danh.')
+      return
+    }
+
+    if (sessionStatus === 'closed') {
+      toast.error('Phiên điểm danh đã đóng', 'Không thể cập nhật điểm danh cho phiên đã đóng.')
       return
     }
 
@@ -263,9 +289,14 @@ function AttendancePage() {
           ...record,
           row_key: record.student_id,
           status: record.status || 'present',
+          email_status: record.email_status || 'not_sent',
         })),
       )
+      setSessionStatus(response.data?.session?.status || 'open')
+      toast.success('Đã lưu điểm danh', 'Hệ thống đã lưu trạng thái điểm danh và email_status cho từng học sinh.')
+      if (response.data?.__legacy_toast) {
       toast.success('Đã gửi điểm danh', 'Hệ thống đã lưu trạng thái và ghi nhận thông báo cho phụ huynh nếu có vắng/đi muộn.')
+      }
     } catch (error) {
       toast.error('Không gửi được điểm danh', error.message || 'Vui lòng kiểm tra lại dữ liệu.')
     } finally {
@@ -358,6 +389,11 @@ function AttendancePage() {
                 - Khối {selectedClassroom.grade_level}
               </p>
             ) : null}
+            {sessionStatus === 'closed' ? (
+              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-brand-red">
+                Phiên điểm danh đã đóng, không thể cập nhật thêm.
+              </p>
+            ) : null}
             <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
               <div className="rounded-md bg-brand-teal-soft px-3 py-2 font-semibold text-brand-teal-dark">
                 Có mặt: {summary.present}
@@ -384,12 +420,18 @@ function AttendancePage() {
                   render: (row) => <StatusBadge status={row.status} />,
                 },
                 {
+                  header: 'Email',
+                  key: 'email_status',
+                  render: (row) => <EmailStatusBadge status={row.email_status} />,
+                },
+                {
                   header: 'Thao tác',
                   key: 'actions',
                   render: (row) => (
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         className="h-9 px-3"
+                        disabled={sessionStatus === 'closed'}
                         icon={Check}
                         onClick={() => setStatus(row.student_id, 'present')}
                         variant={row.status === 'present' ? 'primary' : 'secondary'}
@@ -398,6 +440,7 @@ function AttendancePage() {
                       </Button>
                       <Button
                         className="h-9 px-3"
+                        disabled={sessionStatus === 'closed'}
                         icon={Clock}
                         onClick={() => setStatus(row.student_id, 'late')}
                         variant={row.status === 'late' ? 'primary' : 'secondary'}
@@ -408,6 +451,7 @@ function AttendancePage() {
                         <div className="flex items-center gap-1">
                           <Input
                             className="w-20"
+                            disabled={sessionStatus === 'closed'}
                             id={`late-${row.student_id}`}
                             min="0"
                             onChange={(event) =>
@@ -428,6 +472,7 @@ function AttendancePage() {
                       )}
                       <Button
                         className="h-9 px-3"
+                        disabled={sessionStatus === 'closed'}
                         icon={X}
                         onClick={() => setStatus(row.student_id, 'absent')}
                         variant={row.status === 'absent' ? 'danger' : 'secondary'}
@@ -444,7 +489,7 @@ function AttendancePage() {
           )}
 
           <div className="flex justify-end">
-            <Button disabled={saving || !selectedClass || records.length === 0} icon={Save} onClick={handleSubmit}>
+            <Button disabled={saving || !selectedClass || records.length === 0 || sessionStatus === 'closed'} icon={Save} onClick={handleSubmit}>
               {saving ? 'Đang gửi' : 'Gửi điểm danh'}
             </Button>
           </div>

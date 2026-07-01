@@ -12,7 +12,7 @@ class RoleMiddleware
     {
         $user = $request->attributes->get('auth_user');
 
-        if (! $user || ! in_array($user->role, $roles, true)) {
+        if (! $user || ($user->role !== 'system_admin' && ! in_array($user->role, $roles, true))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden.',

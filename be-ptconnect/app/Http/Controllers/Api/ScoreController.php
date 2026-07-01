@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AssignmentSubmission;
-use App\Models\Classroom;
-use App\Models\ParentProfile;
+use App\Support\AccessControl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -83,29 +82,31 @@ class ScoreController extends Controller
         return AssignmentSubmission::query()
             ->with([
                 'assignment:id,title,classroom_id,grade_level,due_date',
-                'assignment.classroom:id,name,grade_level',
+                'assignment.classroom:id,name,course_id',
+                'assignment.classroom.course:id,name,grade_level',
                 'student:id,student_code,full_name,classroom_id',
-                'student.classroom:id,name,grade_level',
+                'student.classroom:id,name,course_id',
+                'student.classroom.course:id,name,grade_level',
             ])
             ->where('status', 'submitted');
     }
 
     private function applyRoleScope(Builder $query, $user): bool
     {
-        if ($user->role === 'admin') {
+        if ($user?->isAdmin()) {
             return true;
         }
 
-        if ($user->role === 'teacher') {
-            $classroomIds = $this->assignedClassroomIds($user->id);
+        if ($user?->isTeacher() || $user?->isAssistant()) {
+            $classroomIds = AccessControl::assignedClassroomIds($user);
 
             $query->whereHas('student', fn (Builder $studentQuery) => $studentQuery->whereIn('classroom_id', $classroomIds));
 
             return true;
         }
 
-        if ($user->role === 'parent') {
-            $studentIds = $this->parentStudentIds($user->id);
+        if ($user?->isStudent()) {
+            $studentIds = AccessControl::legacyStudentIdsForUser($user);
 
             $query->whereIn('student_id', $studentIds);
 
@@ -123,8 +124,8 @@ class ScoreController extends Controller
 
         if ($gradeLevel && $gradeLevel !== 'all') {
             $query->whereHas(
-                'student.classroom',
-                fn (Builder $classroomQuery) => $classroomQuery->where('grade_level', (int) $gradeLevel),
+                'student.classroom.course',
+                fn (Builder $courseQuery) => $courseQuery->where('grade_level', (int) $gradeLevel),
             );
         }
 
@@ -160,7 +161,7 @@ class ScoreController extends Controller
             'student_name' => $student?->full_name,
             'classroom_id' => $student?->classroom_id ?? $submission->assignment?->classroom_id,
             'class_name' => $classroom?->name,
-            'grade_level' => $classroom?->grade_level ?? $submission->assignment?->grade_level,
+            'grade_level' => $classroom?->course?->grade_level ?? $submission->assignment?->grade_level,
             'subject' => 'Sinh học',
             'file_name' => $submission->submitted_file_name,
             'file_mime' => $submission->submitted_file_mime,
@@ -169,26 +170,6 @@ class ScoreController extends Controller
             'submitted_at' => $submission->submitted_at?->toDateTimeString(),
             'status' => $submission->status,
         ];
-    }
-
-    private function assignedClassroomIds(int $userId): array
-    {
-        return Classroom::query()
-            ->whereHas('users', fn (Builder $query) => $query->where('users.id', $userId))
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-    }
-
-    private function parentStudentIds(int $userId): array
-    {
-        return ParentProfile::query()
-            ->where('user_id', $userId)
-            ->pluck('student_id')
-            ->unique()
-            ->values()
-            ->map(fn ($id): int => (int) $id)
-            ->all();
     }
 
     private function success(string $message, array $data, int $status = 200): JsonResponse

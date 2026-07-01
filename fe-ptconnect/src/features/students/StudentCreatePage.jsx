@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Save, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { classApi } from "../../api/classApi";
@@ -9,6 +9,30 @@ import Loading from "../../components/common/Loading";
 import Select from "../../components/common/Select";
 import { useToast } from "../../store/useToast";
 
+const defaultForm = {
+  full_name: "",
+  student_email: "",
+  parent_email: "",
+  high_school_name: "",
+  classroom_id: "",
+  cccd: "",
+  date_of_birth: "",
+  student_phone: "",
+  address: "",
+  parent_phone: "",
+  parent_full_name: "",
+  parent_relation: "",
+};
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeValidationErrors(apiErrors = {}) {
+  return Object.entries(apiErrors).reduce((result, [field, messages]) => {
+    result[field] = Array.isArray(messages) ? messages[0] : messages;
+    return result;
+  }, {});
+}
+
 function StudentCreatePage() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -18,17 +42,8 @@ function StudentCreatePage() {
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState({});
   const [importResult, setImportResult] = useState(null);
-  const [form, setForm] = useState({
-    full_name: "",
-    student_code: "",
-    classroom_id: "",
-    phone: "",
-    date_of_birth: "",
-    avatar: null,
-    address: "",
-  });
+  const [form, setForm] = useState(defaultForm);
   const [importForm, setImportForm] = useState({
-    classroom_id: "",
     file: null,
   });
 
@@ -61,6 +76,17 @@ function StudentCreatePage() {
     };
   }, []);
 
+  const classroomOptions = useMemo(
+    () =>
+      classes
+        .filter((classroom) => classroom.is_active !== false)
+        .sort((a, b) => {
+          const gradeDiff = Number(a.grade_level || 0) - Number(b.grade_level || 0);
+          return gradeDiff || String(a.name).localeCompare(String(b.name));
+        }),
+    [classes],
+  );
+
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
@@ -69,24 +95,54 @@ function StudentCreatePage() {
   const validateForm = () => {
     const nextErrors = {};
 
-    if (!form.full_name.trim())
+    if (!form.full_name.trim()) {
       nextErrors.full_name = "Vui lòng nhập họ tên học sinh.";
-    if (!form.student_code.trim())
-      nextErrors.student_code = "Vui lòng nhập mã học sinh.";
-    if (!form.classroom_id) nextErrors.classroom_id = "Vui lòng chọn lớp.";
+    }
+
+    if (!form.student_email.trim()) {
+      nextErrors.student_email = "Vui lòng nhập email đăng nhập của học sinh.";
+    } else if (!emailPattern.test(form.student_email.trim())) {
+      nextErrors.student_email = "Email học sinh không hợp lệ.";
+    }
+
+    if (!form.parent_email.trim()) {
+      nextErrors.parent_email = "Vui lòng nhập email phụ huynh.";
+    } else if (!emailPattern.test(form.parent_email.trim())) {
+      nextErrors.parent_email = "Email phụ huynh không hợp lệ.";
+    }
+
+    if (!form.high_school_name.trim()) {
+      nextErrors.high_school_name = "Vui lòng nhập tên trường THPT.";
+    }
+
+    if (!form.classroom_id) {
+      nextErrors.classroom_id = "Vui lòng chọn lớp.";
+    }
 
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
       toast.error(
         "Thiếu thông tin học sinh",
-        "Vui lòng nhập đầy đủ họ tên, mã học sinh và lớp.",
+        "Vui lòng nhập đầy đủ các trường bắt buộc trước khi tạo học sinh.",
       );
       return false;
     }
 
     return true;
   };
+
+  const buildPayload = () =>
+    Object.entries(form).reduce((payload, [key, value]) => {
+      if (key === "classroom_id") {
+        payload[key] = Number(value);
+        return payload;
+      }
+
+      const normalized = String(value || "").trim();
+      payload[key] = normalized || null;
+      return payload;
+    }, {});
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -96,23 +152,22 @@ function StudentCreatePage() {
     setSaving(true);
 
     try {
-      const payload = new FormData();
-      payload.append("full_name", form.full_name.trim());
-      payload.append("student_code", form.student_code.trim());
-      payload.append("classroom_id", Number(form.classroom_id));
-      if (form.phone.trim()) payload.append("phone", form.phone.trim());
-      if (form.date_of_birth)
-        payload.append("date_of_birth", form.date_of_birth);
-      if (form.avatar) payload.append("avatar", form.avatar);
-      if (form.address.trim()) payload.append("address", form.address.trim());
+      const response = await studentApi.create(buildPayload());
+      const student = response.data;
 
-      await studentApi.create(payload);
-      toast.success("Đã lưu học sinh", "Hồ sơ học sinh mới đã được tạo.");
+      toast.success(
+        "Đã tạo học sinh",
+        `Mã học sinh: ${student.student_code}. Email đăng nhập: ${student.account?.email || student.student_email}.`,
+      );
       navigate("/hoc-sinh", { replace: true });
     } catch (error) {
+      if (error.errors) {
+        setErrors(normalizeValidationErrors(error.errors));
+      }
+
       toast.error(
-        "Không lưu được học sinh",
-        error.message || "Vui lòng kiểm tra lại thông tin.",
+        "Không tạo được học sinh",
+        error.message || "Vui lòng kiểm tra lại thông tin học sinh.",
       );
     } finally {
       setSaving(false);
@@ -136,9 +191,6 @@ function StudentCreatePage() {
     try {
       const payload = new FormData();
       payload.append("file", importForm.file);
-      if (importForm.classroom_id) {
-        payload.append("classroom_id", importForm.classroom_id);
-      }
 
       const response = await studentApi.importExcel(payload);
       setImportResult(response.data);
@@ -161,7 +213,7 @@ function StudentCreatePage() {
       <div>
         <h1 className="text-2xl font-bold text-brand-text">Thêm học sinh</h1>
         <p className="mt-1 text-sm text-brand-muted">
-          Tạo hồ sơ học sinh mới, phân lớp hoặc import danh sách từ Excel.
+          Tạo tài khoản học sinh bằng email và liên kết vào lớp đang học.
         </p>
       </div>
 
@@ -176,80 +228,126 @@ function StudentCreatePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 error={errors.full_name}
-                id="student-name"
+                id="student-full-name"
                 label="Họ và tên"
-                onChange={(event) =>
-                  updateForm("full_name", event.target.value)
-                }
-                placeholder="Nhập họ tên học sinh"
+                onChange={(event) => updateForm("full_name", event.target.value)}
+                placeholder="Nguyễn Văn A"
                 value={form.full_name}
-              />
-              <Input
-                error={errors.student_code}
-                id="student-code"
-                label="Mã học sinh"
-                onChange={(event) =>
-                  updateForm("student_code", event.target.value)
-                }
-                placeholder="HS100001"
-                value={form.student_code}
               />
               <Select
                 error={errors.classroom_id}
                 id="student-class"
                 label="Lớp"
-                onChange={(event) =>
-                  updateForm("classroom_id", event.target.value)
-                }
+                onChange={(event) => updateForm("classroom_id", event.target.value)}
                 value={form.classroom_id}
               >
                 <option value="">Chọn lớp</option>
-                {classes.map((classroom) => (
+                {classroomOptions.map((classroom) => (
                   <option key={classroom.id} value={classroom.id}>
-                    {classroom.name} - Khối {classroom.grade_level}
+                    {classroom.name} - Khối {classroom.grade_level || "?"}
                   </option>
                 ))}
               </Select>
               <Input
+                autoComplete="email"
+                error={errors.student_email}
+                id="student-email"
+                label="Email học sinh"
+                onChange={(event) => updateForm("student_email", event.target.value)}
+                placeholder="hoc.sinh@example.com"
+                type="email"
+                value={form.student_email}
+              />
+              <Input
+                autoComplete="email"
+                error={errors.parent_email}
+                id="parent-email"
+                label="Email phụ huynh"
+                onChange={(event) => updateForm("parent_email", event.target.value)}
+                placeholder="phu.huynh@example.com"
+                type="email"
+                value={form.parent_email}
+              />
+              <Input
+                error={errors.high_school_name}
+                id="student-school"
+                label="Trường THPT"
+                onChange={(event) =>
+                  updateForm("high_school_name", event.target.value)
+                }
+                placeholder="THPT Nguyễn Trãi"
+                value={form.high_school_name}
+              />
+              <Input
+                error={errors.cccd}
+                id="student-cccd"
+                label="CCCD"
+                onChange={(event) => updateForm("cccd", event.target.value)}
+                placeholder="Không bắt buộc"
+                value={form.cccd}
+              />
+              <Input
+                error={errors.date_of_birth}
                 id="student-dob"
                 label="Ngày sinh"
-                onChange={(event) =>
-                  updateForm("date_of_birth", event.target.value)
-                }
+                onChange={(event) => updateForm("date_of_birth", event.target.value)}
                 type="date"
                 value={form.date_of_birth}
               />
               <Input
+                error={errors.student_phone}
                 id="student-phone"
-                label="Số điện thoại"
-                onChange={(event) => updateForm("phone", event.target.value)}
-                placeholder="0901000001"
-                value={form.phone}
+                label="SĐT học sinh"
+                onChange={(event) => updateForm("student_phone", event.target.value)}
+                placeholder="Không bắt buộc"
+                value={form.student_phone}
               />
               <Input
-                accept="image/png,image/jpeg,image/webp"
-                id="student-avatar"
-                label="Chọn ảnh"
+                error={errors.parent_phone}
+                id="parent-phone"
+                label="SĐT phụ huynh"
+                onChange={(event) => updateForm("parent_phone", event.target.value)}
+                placeholder="Không bắt buộc"
+                value={form.parent_phone}
+              />
+              <Input
+                error={errors.parent_full_name}
+                id="parent-full-name"
+                label="Họ tên phụ huynh"
                 onChange={(event) =>
-                  updateForm("avatar", event.target.files?.[0] || null)
+                  updateForm("parent_full_name", event.target.value)
                 }
-                type="file"
+                placeholder="Không bắt buộc"
+                value={form.parent_full_name}
               />
               <Input
+                error={errors.parent_relation}
+                id="parent-relation"
+                label="Quan hệ"
+                onChange={(event) =>
+                  updateForm("parent_relation", event.target.value)
+                }
+                placeholder="Cha, mẹ, người giám hộ..."
+                value={form.parent_relation}
+              />
+              <Input
+                className="sm:col-span-2"
+                error={errors.address}
                 id="student-address"
                 label="Địa chỉ"
                 onChange={(event) => updateForm("address", event.target.value)}
-                placeholder="Địa chỉ liên hệ"
+                placeholder="Không bắt buộc"
                 value={form.address}
               />
             </div>
+
             <div className="mt-5 flex justify-end">
               <Button
-                disabled={saving || classes.length === 0}
+                disabled={saving || classroomOptions.length === 0}
                 icon={Save}
                 type="submit"
               >
-                {saving ? "Đang lưu" : "Lưu học sinh"}
+                {saving ? "Đang tạo" : "Tạo học sinh"}
               </Button>
             </div>
           </form>
@@ -263,30 +361,10 @@ function StudentCreatePage() {
                 Import danh sách học sinh bằng Excel
               </h2>
               <p className="mt-1 text-sm text-brand-muted">
-                File hỗ trợ .xlsx hoặc .csv. Các cột nên có: student_code,
-                full_name, class_name, date_of_birth, student_phone, avatar,
-                address.
+                Phần import giữ nguyên để xử lý ở task riêng khi cần cập nhật theo cấu trúc mới.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                id="import-class"
-                label="Lớp mặc định"
-                onChange={(event) =>
-                  setImportForm((current) => ({
-                    ...current,
-                    classroom_id: event.target.value,
-                  }))
-                }
-                value={importForm.classroom_id}
-              >
-                <option value="">Dùng cột class_name trong file</option>
-                {classes.map((classroom) => (
-                  <option key={classroom.id} value={classroom.id}>
-                    {classroom.name} - Khối {classroom.grade_level}
-                  </option>
-                ))}
-              </Select>
               <Input
                 accept=".xlsx,.csv"
                 id="student-import-file"
@@ -314,11 +392,11 @@ function StudentCreatePage() {
             {importResult ? (
               <div className="mt-4 rounded-md border border-brand-border bg-brand-bg p-4 text-sm text-brand-text">
                 <p>
-                  Đã thêm <strong>{importResult.created}</strong> học sinh, bỏ
-                  qua <strong>{importResult.skipped}</strong> dòng.
+                  Đã thêm <strong>{importResult.created}</strong> học sinh, bỏ qua{" "}
+                  <strong>{importResult.skipped}</strong> dòng.
                 </p>
                 {importResult.errors?.length ? (
-                  <ul className="mt-2 space-y-1 text-brand-muted">
+                  <ul className="mt-2 space-y-1 text-brand-red">
                     {importResult.errors.map((error) => (
                       <li key={error}>{error}</li>
                     ))}

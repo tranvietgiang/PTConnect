@@ -35,6 +35,10 @@ class JwtAuthMiddleware
                 return $this->unauthorized('Invalid token user.');
             }
 
+            if (array_key_exists('is_active', $user->getAttributes()) && ! $user->is_active) {
+                return $this->unauthorized('Inactive user.');
+            }
+
             $request->attributes->set('auth_user', $user);
         } catch (ExpiredException) {
             return $this->unauthorized('Token has expired.');

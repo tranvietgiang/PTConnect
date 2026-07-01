@@ -8,9 +8,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AttendanceSession extends Model
 {
+    public const STATUS_OPEN = 'open';
+    public const STATUS_CLOSED = 'closed';
+
     protected $fillable = [
         'classroom_id',
-        'attendance_date',
+        'session_date',
+        'start_time',
+        'end_time',
+        'status',
         'lesson_number',
         'session_name',
         'created_by',
@@ -20,7 +26,7 @@ class AttendanceSession extends Model
     protected function casts(): array
     {
         return [
-            'attendance_date' => 'date',
+            'session_date' => 'date',
             'lesson_number' => 'integer',
         ];
     }

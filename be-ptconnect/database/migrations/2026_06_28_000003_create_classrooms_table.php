@@ -10,17 +10,14 @@ return new class extends Migration
     {
         Schema::create('classrooms', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('academic_year_id')->constrained()->cascadeOnDelete();
-            $table->string('name')->index();
-            $table->unsignedTinyInteger('grade_level')->index();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->unsignedSmallInteger('total_lessons')->default(30);
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true)->index();
+            $table->foreignId('course_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('teacher_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('name', 100)->index();
+            $table->enum('status', ['active', 'completed', 'inactive'])->default('active')->index();
             $table->timestamps();
 
-            $table->unique(['academic_year_id', 'name']);
+            $table->unique(['course_id', 'name']);
+            $table->index(['teacher_id', 'status']);
         });
     }
 

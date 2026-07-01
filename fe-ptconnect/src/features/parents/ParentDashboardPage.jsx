@@ -1,9 +1,12 @@
-import { User } from "lucide-react";
+import { Save, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { attendanceApi } from "../../api/attendanceApi";
 import { scoreApi } from "../../api/scoreApi";
 import { studentApi } from "../../api/studentApi";
+import Button from "../../components/common/Button";
+import Input from "../../components/common/Input";
 import Loading from "../../components/common/Loading";
+import Select from "../../components/common/Select";
 import { useToast } from "../../store/useToast";
 import { formatDate } from "../../utils/formatDate";
 
@@ -54,6 +57,16 @@ const tabs = [
   { key: "attendance", label: "Điểm danh" },
 ];
 
+function buildProfileForm(student) {
+  return {
+    full_name: student?.full_name || "",
+    gender: student?.gender || "",
+    phone: student?.phone || "",
+    date_of_birth: student?.date_of_birth || "",
+    address: student?.address || "",
+  };
+}
+
 function ParentDashboardPage() {
   const toast = useToast();
   const [students, setStudents] = useState([]);
@@ -61,6 +74,8 @@ function ParentDashboardPage() {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAttendanceStudentId, setSelectedAttendanceStudentId] = useState(null);
+  const [profileForms, setProfileForms] = useState({});
+  const [profileSavingId, setProfileSavingId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -75,7 +90,15 @@ function ParentDashboardPage() {
 
         if (!mounted) return;
 
-        setStudents(studentResponse.data || []);
+        const loadedStudents = studentResponse.data || [];
+
+        setStudents(loadedStudents);
+        setProfileForms(
+          loadedStudents.reduce((forms, student) => {
+            forms[String(student.id)] = buildProfileForm(student);
+            return forms;
+          }, {}),
+        );
         setScores(scoreResponse.data || []);
         setAttendanceRecords(attendanceResponse.data || []);
       } catch (error) {
@@ -134,6 +157,58 @@ function ParentDashboardPage() {
     }, {});
   }, [students, attendanceByStudent]);
 
+  const updateProfileForm = (studentId, field, value) => {
+    setProfileForms((current) => ({
+      ...current,
+      [String(studentId)]: {
+        ...(current[String(studentId)] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleProfileSubmit = async (event, studentId) => {
+    event.preventDefault();
+
+    const profileForm = profileForms[String(studentId)] || {};
+
+    if (!profileForm.full_name?.trim()) {
+      toast.error("Thiếu họ tên", "Vui lòng nhập họ tên học sinh.");
+      return;
+    }
+
+    setProfileSavingId(studentId);
+
+    try {
+      const response = await studentApi.update(studentId, {
+        full_name: profileForm.full_name.trim(),
+        gender: profileForm.gender || null,
+        phone: profileForm.phone?.trim() || null,
+        date_of_birth: profileForm.date_of_birth || null,
+        address: profileForm.address?.trim() || null,
+      });
+      const updatedStudent = response.data;
+
+      setStudents((current) =>
+        current.map((student) =>
+          student.id === studentId ? updatedStudent : student,
+        ),
+      );
+      setProfileForms((current) => ({
+        ...current,
+        [String(studentId)]: buildProfileForm(updatedStudent),
+      }));
+      toast.success("Đã cập nhật hồ sơ", "Thông tin học sinh đã được lưu.");
+    } catch (error) {
+      toast.error(
+        "Không cập nhật được hồ sơ",
+        error.message || "Vui lòng kiểm tra lại thông tin.",
+      );
+    } finally {
+      setProfileSavingId(null);
+    }
+  };
+
   if (loading) {
     return <Loading label="Đang tải thông tin phụ huynh" />;
   }
@@ -158,6 +233,7 @@ function ParentDashboardPage() {
           const studentScores = scoresByStudent[String(student.id)] || [];
           const studentAttendance = attendanceByStudent[String(student.id)] || [];
           const summary = attendanceSummary[String(student.id)] || { total: 0, present: 0, late: 0, absent: 0 };
+          const profileForm = profileForms[String(student.id)] || buildProfileForm(student);
 
           return (
             <section className="space-y-4" key={student.id}>
@@ -199,6 +275,76 @@ function ParentDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                <form
+                  className="mt-5 rounded-md border border-brand-border bg-brand-bg p-4"
+                  onSubmit={(event) => handleProfileSubmit(event, student.id)}
+                >
+                  <h3 className="text-base font-semibold text-brand-text">
+                    Bổ sung thông tin học sinh
+                  </h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <Input
+                      id={`student-name-${student.id}`}
+                      label="Họ và tên"
+                      onChange={(event) =>
+                        updateProfileForm(student.id, "full_name", event.target.value)
+                      }
+                      value={profileForm.full_name}
+                    />
+                    <Select
+                      id={`student-gender-${student.id}`}
+                      label="Giới tính"
+                      onChange={(event) =>
+                        updateProfileForm(student.id, "gender", event.target.value)
+                      }
+                      value={profileForm.gender}
+                    >
+                      <option value="">Không chọn</option>
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </Select>
+                    <Input
+                      id={`student-dob-${student.id}`}
+                      label="Ngày sinh"
+                      onChange={(event) =>
+                        updateProfileForm(student.id, "date_of_birth", event.target.value)
+                      }
+                      type="date"
+                      value={profileForm.date_of_birth}
+                    />
+                    <Input
+                      id={`student-phone-${student.id}`}
+                      label="Số điện thoại"
+                      onChange={(event) =>
+                        updateProfileForm(student.id, "phone", event.target.value)
+                      }
+                      placeholder="0901000001"
+                      value={profileForm.phone}
+                    />
+                    <div className="sm:col-span-2">
+                      <Input
+                        id={`student-address-${student.id}`}
+                        label="Địa chỉ"
+                        onChange={(event) =>
+                          updateProfileForm(student.id, "address", event.target.value)
+                        }
+                        placeholder="Địa chỉ liên hệ"
+                        value={profileForm.address}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      disabled={profileSavingId === student.id}
+                      icon={Save}
+                      type="submit"
+                    >
+                      {profileSavingId === student.id ? "Đang lưu" : "Lưu thông tin"}
+                    </Button>
+                  </div>
+                </form>
 
                 <div className="mt-4 border-t border-brand-border pt-4">
                   <div className="flex gap-1 rounded-lg bg-brand-bg p-1">

@@ -16,12 +16,19 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_SYSTEM_ADMIN = 'system_admin';
+    public const ROLE_SCHOOL_ADMIN = 'school_admin';
+    public const ROLE_TEACHER = 'teacher';
+    public const ROLE_ASSISTANT = 'assistant';
+    public const ROLE_STUDENT = 'student';
+
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
+        'name',
         'email',
         'username',
         'email_verified_at',
@@ -66,6 +73,26 @@ class User extends Authenticatable
         return $this->hasOne(ParentProfile::class);
     }
 
+    public function studentProfile(): HasOne
+    {
+        return $this->hasOne(StudentProfile::class);
+    }
+
+    public function teachingClassrooms(): HasMany
+    {
+        return $this->hasMany(Classroom::class, 'teacher_id');
+    }
+
+    public function taughtClassrooms(): HasMany
+    {
+        return $this->teachingClassrooms();
+    }
+
+    public function assistantAssignments(): HasMany
+    {
+        return $this->hasMany(AssistantAssignment::class, 'assistant_id');
+    }
+
     public function classrooms(): BelongsToMany
     {
         return $this->belongsToMany(Classroom::class, 'class_user_assignments')
@@ -81,5 +108,35 @@ class User extends Authenticatable
     public function sentNotifications(): HasMany
     {
         return $this->hasMany(Notification::class, 'sender_id');
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, [self::ROLE_SYSTEM_ADMIN, self::ROLE_SCHOOL_ADMIN], true);
+    }
+
+    public function isSystemAdmin(): bool
+    {
+        return $this->role === self::ROLE_SYSTEM_ADMIN;
+    }
+
+    public function isSchoolAdmin(): bool
+    {
+        return $this->role === self::ROLE_SCHOOL_ADMIN;
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role === self::ROLE_TEACHER;
+    }
+
+    public function isAssistant(): bool
+    {
+        return $this->role === self::ROLE_ASSISTANT;
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->role === self::ROLE_STUDENT;
     }
 }

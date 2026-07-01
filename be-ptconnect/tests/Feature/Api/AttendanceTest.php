@@ -158,6 +158,120 @@ class AttendanceTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_admin_can_manage_attendance_sessions(): void
+    {
+        $createResponse = $this->postJson('/api/attendance/sessions', [
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-06-29',
+            'lesson_number' => 1,
+            'session_name' => 'Lesson 1',
+            'note' => 'Buoi hoc demo',
+        ], $this->authHeader($this->admin));
+
+        $createResponse->assertStatus(201)
+            ->assertJsonPath('data.lesson_number', 1)
+            ->assertJsonPath('data.classroom_id', $this->classroom->id);
+
+        $sessionId = $createResponse->json('data.id');
+
+        $this->getJson('/api/attendance/sessions', $this->authHeader($this->admin))
+            ->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $this->putJson("/api/attendance/sessions/{$sessionId}", [
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-06-30',
+            'lesson_number' => 2,
+            'session_name' => 'Lesson 2',
+            'note' => 'Da sua',
+        ], $this->authHeader($this->admin))
+            ->assertStatus(200)
+            ->assertJsonPath('data.lesson_number', 2)
+            ->assertJsonPath('data.attendance_date', '2026-06-30');
+
+        $this->deleteJson("/api/attendance/sessions/{$sessionId}", [], $this->authHeader($this->admin))
+            ->assertStatus(200);
+
+        $this->assertDatabaseMissing('attendance_sessions', ['id' => $sessionId]);
+    }
+
+    public function test_admin_can_bulk_create_attendance_sessions(): void
+    {
+        $response = $this->postJson('/api/attendance/sessions/bulk', [
+            'classroom_id' => $this->classroom->id,
+            'start_date' => '2026-06-29',
+            'start_lesson_number' => 1,
+            'lesson_count' => 3,
+            'day_interval' => 7,
+            'session_name_prefix' => 'Lesson',
+        ], $this->authHeader($this->admin));
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.created_count', 3)
+            ->assertJsonPath('data.skipped_count', 0);
+
+        $this->assertDatabaseHas('attendance_sessions', [
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-07-13 00:00:00',
+            'lesson_number' => 3,
+        ]);
+    }
+
+    public function test_admin_can_view_attendance_session_student_statuses(): void
+    {
+        $session = AttendanceSession::create([
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-06-29',
+            'lesson_number' => 1,
+            'session_name' => 'Lesson 1',
+            'created_by' => $this->admin->id,
+        ]);
+        AttendanceRecord::create([
+            'attendance_session_id' => $session->id,
+            'student_id' => $this->student1->id,
+            'status' => 'absent',
+        ]);
+        AttendanceRecord::create([
+            'attendance_session_id' => $session->id,
+            'student_id' => $this->student2->id,
+            'status' => 'present',
+        ]);
+
+        $response = $this->getJson("/api/attendance/sessions/{$session->id}", $this->authHeader($this->admin));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.records.0.student_name', 'Nguyen Van A')
+            ->assertJsonPath('data.records.0.status', 'absent')
+            ->assertJsonPath('data.records.1.student_name', 'Tran Van B')
+            ->assertJsonPath('data.records.1.status', 'present');
+    }
+
+    public function test_attendance_session_management_is_admin_only(): void
+    {
+        $this->getJson('/api/attendance/sessions', $this->authHeader($this->assistant))
+            ->assertStatus(403);
+    }
+
+    public function test_admin_cannot_create_duplicate_attendance_session(): void
+    {
+        AttendanceSession::create([
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-06-29',
+            'lesson_number' => 1,
+            'session_name' => 'Lesson 1',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $response = $this->postJson('/api/attendance/sessions', [
+            'classroom_id' => $this->classroom->id,
+            'attendance_date' => '2026-06-29',
+            'lesson_number' => 1,
+            'session_name' => 'Lesson 1',
+        ], $this->authHeader($this->admin));
+
+        $response->assertStatus(422);
+    }
+
     public function test_attendance_submit_rejects_student_not_in_class(): void
     {
         $otherClassroom = Classroom::create([
@@ -218,6 +332,11 @@ class AttendanceTest extends TestCase
     {
         \App\Models\ParentProfile::create([
             'user_id' => User::factory()->create(['role' => 'parent'])->id,
+            'student_id' => $this->student1->id,
+            'full_name' => 'Phu huynh A', 'email' => 'parenta@test.com', 'relationship' => 'father',
+        ]);
+        \App\Models\ParentProfile::create([
+            'user_id' => User::factory()->create(['role' => 'parent'])->id,
             'student_id' => $this->student2->id,
             'full_name' => 'Phu huynh B', 'email' => 'parentb@test.com', 'relationship' => 'mother',
         ]);
@@ -233,5 +352,13 @@ class AttendanceTest extends TestCase
 
         $this->assertDatabaseHas('notifications', ['type' => 'attendance']);
         $this->assertDatabaseHas('email_logs', ['type' => 'attendance']);
+        $this->assertDatabaseHas('email_logs', ['recipient_email' => 'parentb@test.com', 'type' => 'attendance']);
+        $this->assertDatabaseMissing('email_logs', ['recipient_email' => 'parenta@test.com', 'type' => 'attendance']);
+        $this->assertDatabaseMissing('notification_recipients', ['email' => 'parenta@test.com']);
+        $this->assertDatabaseHas('attendance_records', [
+            'student_id' => $this->student1->id,
+            'status' => 'present',
+            'email_sent_at' => null,
+        ]);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -35,7 +36,7 @@ class StudentTest extends TestCase
         ]);
 
         $this->student = Student::create([
-            'classroom_id' => $this->classroom->id, 'student_code' => 'HS001', 'full_name' => 'Nguyen Van A',
+            'classroom_id' => $this->classroom->id, 'student_code' => 'HS100001', 'full_name' => 'Nguyen Van A',
             'status' => 'studying',
         ]);
 
@@ -103,24 +104,30 @@ class StudentTest extends TestCase
     public function test_admin_can_create_student(): void
     {
         $response = $this->postJson('/api/students', [
+            'username' => 'HS100002',
+            'grade_level' => 10,
             'classroom_id' => $this->classroom->id,
-            'student_code' => 'HS_NEW',
-            'full_name' => 'Le Van C',
         ], $this->authHeader($this->admin));
 
         $response->assertStatus(201)
             ->assertJson(['success' => true, 'message' => 'Student created.'])
-            ->assertJsonStructure(['data' => ['id', 'student_code', 'full_name']]);
+            ->assertJsonStructure(['data' => ['id', 'student_code', 'full_name', 'parent_account']])
+            ->assertJsonPath('data.student_code', 'HS100002')
+            ->assertJsonPath('data.full_name', 'HS100002')
+            ->assertJsonPath('data.parent_account.username', 'HS100002')
+            ->assertJsonPath('data.parent_account.password', 'HS100002');
 
-        $this->assertDatabaseHas('students', ['student_code' => 'HS_NEW']);
+        $this->assertDatabaseHas('students', ['student_code' => 'HS100002', 'full_name' => 'HS100002']);
+        $this->assertDatabaseHas('users', ['username' => 'HS100002', 'role' => 'parent']);
+        $this->assertTrue(Hash::check('HS100002', User::query()->where('username', 'HS100002')->first()->password));
     }
 
     public function test_non_admin_cannot_create_student(): void
     {
         $response = $this->postJson('/api/students', [
+            'username' => 'HS100002',
+            'grade_level' => 10,
             'classroom_id' => $this->classroom->id,
-            'student_code' => 'HS_NEW',
-            'full_name' => 'Le Van C',
         ], $this->authHeader($this->teacher));
 
         $response->assertStatus(403);
@@ -133,15 +140,55 @@ class StudentTest extends TestCase
         $response->assertStatus(422);
     }
 
-    public function test_create_student_validates_unique_code(): void
+    public function test_create_student_uses_username_as_student_code(): void
     {
         $response = $this->postJson('/api/students', [
+            'username' => 'HS100002',
+            'grade_level' => 10,
             'classroom_id' => $this->classroom->id,
-            'student_code' => 'HS001',
-            'full_name' => 'Another',
+            'student_code' => 'CLIENT_SHOULD_NOT_DECIDE',
         ], $this->authHeader($this->admin));
 
-        $response->assertStatus(422);
+        $response->assertStatus(201)
+            ->assertJsonPath('data.student_code', 'HS100002');
+
+        $this->assertDatabaseMissing('students', ['student_code' => 'CLIENT_SHOULD_NOT_DECIDE']);
+    }
+
+    public function test_parent_can_update_own_child_profile(): void
+    {
+        $response = $this->putJson('/api/students/' . $this->student->id, [
+            'full_name' => 'Nguyen Van A Updated',
+            'gender' => 'male',
+            'phone' => '0909000001',
+            'date_of_birth' => '2010-01-15',
+            'address' => 'Thu Duc',
+        ], $this->authHeader($this->parent));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.full_name', 'Nguyen Van A Updated')
+            ->assertJsonPath('data.gender', 'male')
+            ->assertJsonPath('data.phone', '0909000001');
+
+        $this->assertDatabaseHas('students', [
+            'id' => $this->student->id,
+            'full_name' => 'Nguyen Van A Updated',
+            'phone' => '0909000001',
+        ]);
+    }
+
+    public function test_parent_cannot_update_unrelated_student(): void
+    {
+        $otherStudent = Student::create([
+            'classroom_id' => $this->classroom->id, 'student_code' => 'HS999', 'full_name' => 'Xa Lac',
+            'status' => 'studying',
+        ]);
+
+        $response = $this->putJson('/api/students/' . $otherStudent->id, [
+            'full_name' => 'Bad Update',
+        ], $this->authHeader($this->parent));
+
+        $response->assertStatus(403);
     }
 
     public function test_admin_can_show_student(): void
@@ -175,7 +222,7 @@ class StudentTest extends TestCase
     public function test_admin_can_import_students_from_csv(): void
     {
         Storage::fake('local');
-        $csvContent = "ma_hoc_sinh,ho_ten,lop\nHS_IMP,Nguyen Van Import,{$this->classroom->name}";
+        $csvContent = "ho_ten,lop,Số điện thoại\nNguyen Van Import,{$this->classroom->name},0909123456";
         $file = UploadedFile::fake()->createWithContent('import.csv', $csvContent);
 
         $response = $this->postJson('/api/students/import', [
@@ -184,6 +231,12 @@ class StudentTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('students', [
+            'student_code' => 'HS100002',
+            'full_name' => 'Nguyen Van Import',
+            'phone' => '0909123456',
+        ]);
     }
 
     public function test_non_admin_cannot_import_students(): void

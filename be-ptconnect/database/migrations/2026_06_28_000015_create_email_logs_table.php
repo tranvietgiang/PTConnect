@@ -10,15 +10,15 @@ return new class extends Migration
     {
         Schema::create('email_logs', function (Blueprint $table): void {
             $table->id();
-            $table->string('recipient_email')->index();
-            $table->string('recipient_name')->nullable();
-            $table->string('subject');
+            $table->string('recipient_email', 191)->index();
+            $table->string('recipient_name', 100)->nullable();
+            $table->string('subject', 200);
             $table->longText('content');
-            $table->string('type')->index();
-            $table->string('status')->default('pending')->index();
+            $table->string('type', 50)->index();
+            $table->string('status', 20)->default('pending')->index();
             $table->text('error_message')->nullable();
             $table->timestamp('sent_at')->nullable()->index();
-            $table->string('related_type')->nullable()->index();
+            $table->string('related_type', 50)->nullable()->index();
             $table->unsignedBigInteger('related_id')->nullable()->index();
             $table->timestamps();
 

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
-use App\Models\Classroom;
-use App\Models\ParentProfile;
+use App\Models\EmailLog;
 use App\Models\Student;
+use App\Models\StudentProfile;
+use App\Support\AccessControl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -23,18 +25,18 @@ class AssignmentController extends Controller
     {
         $user = $request->attributes->get('auth_user');
         $query = Assignment::query()
-            ->with(['classroom:id,name,grade_level', 'submissions.student:id,full_name'])
+            ->with(['classroom:id,name,course_id', 'classroom.course:id,name,grade_level', 'submissions.student:id,full_name'])
             ->orderByDesc('created_at');
 
-        if ($user->role === 'parent') {
+        if ($user->isStudent()) {
             return $this->success('Assignments retrieved.', $this->parentAssignments($query, $user->id));
         }
 
-        if ($user->role === 'teacher') {
-            $assignedClassroomIds = $this->assignedClassroomIds($user->id);
+        if ($user->isTeacher() || $user->isAssistant()) {
+            $assignedClassroomIds = $this->assignedClassroomIds($user);
 
             $query->whereIn('classroom_id', $assignedClassroomIds);
-        } elseif ($user->role !== 'admin') {
+        } elseif (! $user->isAdmin()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -48,7 +50,7 @@ class AssignmentController extends Controller
     {
         $user = $request->attributes->get('auth_user');
 
-        if (! in_array($user->role, ['admin', 'teacher'], true)) {
+        if (! $user->isAdmin() && ! $user->isTeacher()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -74,12 +76,12 @@ class AssignmentController extends Controller
             return $this->error('Vui lòng chọn lớp hoặc khối.', 422);
         }
 
-        if ($user->role === 'teacher') {
+        if ($user->isTeacher()) {
             if (empty($validated['classroom_id'])) {
                 return $this->error('Giáo viên chỉ được giao bài cho lớp được phân công.', 403);
             }
 
-            if (! in_array((int) $validated['classroom_id'], $this->assignedClassroomIds($user->id), true)) {
+            if (! in_array((int) $validated['classroom_id'], $this->assignedClassroomIds($user), true)) {
                 return $this->error('Forbidden.', 403);
             }
 
@@ -131,7 +133,7 @@ class AssignmentController extends Controller
     {
         $user = $request->attributes->get('auth_user');
 
-        if ($user->role !== 'parent') {
+        if (! $user->isStudent()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -195,22 +197,22 @@ class AssignmentController extends Controller
     {
         $user = $request->attributes->get('auth_user');
 
-        if ($user->role === 'parent') {
+        if ($user->isStudent()) {
             $ownedStudentIds = $this->parentStudents($user->id)->pluck('id');
 
             if (! $ownedStudentIds->contains($submission->student_id)) {
                 return $this->error('Forbidden.', 403);
             }
-        } elseif ($user->role === 'teacher') {
+        } elseif ($user->isTeacher() || $user->isAssistant()) {
             $submission->loadMissing('assignment');
 
             if (
                 ! $submission->assignment->classroom_id
-                || ! in_array((int) $submission->assignment->classroom_id, $this->assignedClassroomIds($user->id), true)
+                || ! in_array((int) $submission->assignment->classroom_id, $this->assignedClassroomIds($user), true)
             ) {
                 return $this->error('Forbidden.', 403);
             }
-        } elseif ($user->role !== 'admin') {
+        } elseif (! $user->isAdmin()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -256,11 +258,173 @@ class AssignmentController extends Controller
         return $this->success('Submission graded.', $this->serializeSubmission($submission->refresh()->load('student')));
     }
 
+    public function sendScoreEmail(Request $request, AssignmentSubmission $submission): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $submission->loadMissing(['assignment.classroom', 'student.classroom']);
+
+        if (! $this->canGradeSubmission($user, $submission)) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        if ($submission->score === null) {
+            return $this->error('Bài tập chưa có điểm, không thể gửi email.', 422);
+        }
+
+        $parentEmail = $this->getSubmissionParentEmail($submission);
+        if (! $parentEmail) {
+            return $this->error('Không tìm thấy email phụ huynh.', 422);
+        }
+
+        try {
+            Mail::send(new \App\Mail\ScoreNotification(
+                studentName: $submission->student?->full_name ?? 'N/A',
+                className: $submission->assignment?->classroom?->name ?? $submission->student?->classroom?->name ?? 'N/A',
+                assignmentTitle: $submission->assignment?->title ?? 'N/A',
+                score: $submission->score !== null ? (string) $submission->score : null,
+                comment: $submission->teacher_comment,
+            ));
+
+            $submission->update([
+                'email_status' => 'sent',
+                'score_emailed_at' => now(),
+                'email_sent_by' => $user->id,
+                'email_error' => null,
+            ]);
+
+            EmailLog::query()->create([
+                'recipient_email' => $parentEmail,
+                'recipient_name' => $submission->student?->full_name,
+                'subject' => 'PTConnect - Thông báo điểm bài tập',
+                'content' => "Điểm bài tập {$submission->assignment?->title}: {$submission->score}",
+                'type' => 'score',
+                'status' => 'sent',
+                'sent_at' => now(),
+                'related_type' => 'assignment_submission',
+                'related_id' => $submission->id,
+            ]);
+
+            return $this->success('Email điểm đã được gửi.', $this->serializeSubmission($submission->refresh()));
+        } catch (\Throwable $e) {
+            $submission->update([
+                'email_status' => 'failed',
+                'email_error' => $e->getMessage(),
+            ]);
+
+            return $this->error('Gửi email thất bại: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function sendBulkScoreEmail(Request $request): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $validated = $request->validate([
+            'submission_ids' => ['required', 'array', 'min:1'],
+            'submission_ids.*' => ['integer', Rule::exists('assignment_submissions', 'id')],
+        ]);
+
+        $submissions = AssignmentSubmission::query()
+            ->with(['assignment.classroom', 'student.classroom'])
+            ->whereIn('id', $validated['submission_ids'])
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($submissions as $submission) {
+            if (! $this->canGradeSubmission($user, $submission)) {
+                $failed++;
+                $errors[] = "Submission #{$submission->id}: Forbidden.";
+                continue;
+            }
+
+            if ($submission->score === null) {
+                $failed++;
+                $errors[] = "Submission #{$submission->id}: Chưa có điểm.";
+                continue;
+            }
+
+            $parentEmail = $this->getSubmissionParentEmail($submission);
+            if (! $parentEmail) {
+                $failed++;
+                $errors[] = "Submission #{$submission->id}: Không tìm thấy email PH.";
+                continue;
+            }
+
+            try {
+                Mail::send(new \App\Mail\ScoreNotification(
+                    studentName: $submission->student?->full_name ?? 'N/A',
+                    className: $submission->assignment?->classroom?->name ?? $submission->student?->classroom?->name ?? 'N/A',
+                    assignmentTitle: $submission->assignment?->title ?? 'N/A',
+                    score: $submission->score !== null ? (string) $submission->score : null,
+                    comment: $submission->teacher_comment,
+                ));
+
+                $submission->update([
+                    'email_status' => 'sent',
+                    'score_emailed_at' => now(),
+                    'email_sent_by' => $user->id,
+                    'email_error' => null,
+                ]);
+
+                EmailLog::query()->create([
+                    'recipient_email' => $parentEmail,
+                    'recipient_name' => $submission->student?->full_name,
+                    'subject' => 'PTConnect - Thông báo điểm bài tập',
+                    'content' => "Điểm bài tập {$submission->assignment?->title}: {$submission->score}",
+                    'type' => 'score',
+                    'status' => 'sent',
+                    'sent_at' => now(),
+                    'related_type' => 'assignment_submission',
+                    'related_id' => $submission->id,
+                ]);
+
+                $sent++;
+            } catch (\Throwable $e) {
+                $submission->update([
+                    'email_status' => 'failed',
+                    'email_error' => $e->getMessage(),
+                ]);
+
+                $failed++;
+                $errors[] = "Submission #{$submission->id}: {$e->getMessage()}";
+            }
+        }
+
+        return $this->success('Email đã được gửi.', [
+            'sent' => $sent,
+            'failed' => $failed,
+            'errors' => $errors,
+        ]);
+    }
+
+    private function getSubmissionParentEmail(AssignmentSubmission $submission): ?string
+    {
+        $student = $submission->student;
+        if (! $student) {
+            return null;
+        }
+
+        $parent = $student->parents()->first();
+        if ($parent?->email) {
+            return $parent->email;
+        }
+
+        $profile = StudentProfile::query()
+            ->where('student_code', $student->student_code)
+            ->first();
+
+        return $profile?->parent_email;
+    }
+
     private function parentAssignments($query, int $userId): array
     {
         $students = $this->parentStudents($userId);
         $classroomIds = $students->pluck('classroom_id')->unique()->values();
-        $gradeLevels = $students->pluck('classroom.grade_level')->filter()->unique()->values();
+        $gradeLevels = $students->pluck('classroom.course.grade_level')->filter()->unique()->values();
 
         $assignments = $query
             ->where('status', 'published')
@@ -282,16 +446,16 @@ class AssignmentController extends Controller
     {
         $user = $request->attributes->get('auth_user');
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
 
-        if ($user->role === 'teacher') {
+        if ($user->isTeacher() || $user->isAssistant()) {
             return $assignment->classroom_id
-                && in_array((int) $assignment->classroom_id, $this->assignedClassroomIds($user->id), true);
+                && in_array((int) $assignment->classroom_id, $this->assignedClassroomIds($user), true);
         }
 
-        if ($user->role === 'parent') {
+        if ($user->isStudent()) {
             return $this->parentStudents($user->id)
                 ->contains(fn(Student $student): bool => $this->assignmentMatchesStudent($assignment->loadMissing('classroom'), $student));
         }
@@ -301,45 +465,41 @@ class AssignmentController extends Controller
 
     private function canGradeSubmission($user, AssignmentSubmission $submission): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
 
-        if ($user->role !== 'teacher') {
+        if (! $user->isTeacher() && ! $user->isAssistant()) {
             return false;
         }
 
         $studentClassroomId = $submission->student?->classroom_id;
 
         return $studentClassroomId
-            && in_array((int) $studentClassroomId, $this->assignedClassroomIds($user->id), true);
+            && in_array((int) $studentClassroomId, $this->assignedClassroomIds($user), true);
     }
 
     private function parentStudents(int $userId): Collection
     {
-        return ParentProfile::query()
-            ->where('user_id', $userId)
-            ->with('student.classroom')
+        $user = request()->attributes->get('auth_user');
+        $studentIds = $user ? AccessControl::legacyStudentIdsForUser($user) : [];
+
+        return Student::query()
+            ->with('classroom.course')
+            ->whereIn('id', $studentIds)
             ->get()
-            ->pluck('student')
-            ->filter()
-            ->unique('id')
             ->values();
     }
 
-    private function assignedClassroomIds(int $userId): array
+    private function assignedClassroomIds($user): array
     {
-        return Classroom::query()
-            ->whereHas('users', fn($query) => $query->where('users.id', $userId))
-            ->pluck('id')
-            ->map(fn($id): int => (int) $id)
-            ->all();
+        return AccessControl::assignedClassroomIds($user);
     }
 
     private function assignmentMatchesStudent(Assignment $assignment, Student $student): bool
     {
         return ((int) $assignment->classroom_id === (int) $student->classroom_id)
-            || ($assignment->grade_level && (int) $assignment->grade_level === (int) $student->classroom?->grade_level);
+            || ($assignment->grade_level && (int) $assignment->grade_level === (int) $student->classroom?->course?->grade_level);
     }
 
     private function isOverdue(Assignment $assignment): bool
@@ -351,7 +511,7 @@ class AssignmentController extends Controller
     private function assignmentStudents(Assignment $assignment): Collection
     {
         return Student::query()
-            ->with('classroom:id,name,grade_level')
+            ->with('classroom:id,name,course_id', 'classroom.course:id,name,grade_level')
             ->where(function ($query) use ($assignment): void {
                 $hasClassroom = (bool) $assignment->classroom_id;
 
@@ -360,7 +520,10 @@ class AssignmentController extends Controller
                 }
 
                 if ($assignment->grade_level) {
-                    $gradeScope = fn($classroom) => $classroom->where('grade_level', $assignment->grade_level);
+                    $gradeScope = fn($classroom) => $classroom->whereHas(
+                        'course',
+                        fn ($course) => $course->where('grade_level', $assignment->grade_level),
+                    );
 
                     if ($hasClassroom) {
                         $query->orWhereHas('classroom', $gradeScope);
@@ -460,6 +623,13 @@ class AssignmentController extends Controller
             'stored_status' => $submission->status,
             'score' => $submission->score,
             'teacher_comment' => $submission->teacher_comment,
+            'email_status' => $submission->email_status ?? 'not_sent',
+            'email_status_label' => match ($submission->email_status ?? 'not_sent') {
+                'sent' => 'Đã gửi',
+                'failed' => 'Gửi lỗi',
+                default => 'Chưa gửi',
+            },
+            'score_emailed_at' => $submission->score_emailed_at?->toDateTimeString(),
         ];
     }
 

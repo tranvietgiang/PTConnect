@@ -10,25 +10,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Classroom extends Model
 {
     protected $fillable = [
-        'academic_year_id',
+        'course_id',
+        'teacher_id',
         'name',
-        'grade_level',
-        'start_date',
-        'end_date',
-        'total_lessons',
-        'description',
-        'is_active',
+        'status',
     ];
 
     protected function casts(): array
     {
-        return [
-            'grade_level' => 'integer',
-            'start_date' => 'date',
-            'end_date' => 'date',
-            'total_lessons' => 'integer',
-            'is_active' => 'boolean',
-        ];
+        return [];
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     public function academicYear(): BelongsTo
@@ -46,6 +46,16 @@ class Classroom extends Model
     public function students(): HasMany
     {
         return $this->hasMany(Student::class);
+    }
+
+    public function studentEnrollments(): HasMany
+    {
+        return $this->hasMany(StudentEnrollment::class);
+    }
+
+    public function assistantAssignments(): HasMany
+    {
+        return $this->hasMany(AssistantAssignment::class);
     }
 
     public function attendanceSessions(): HasMany

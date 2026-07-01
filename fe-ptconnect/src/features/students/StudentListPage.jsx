@@ -17,8 +17,12 @@ function StudentListPage() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [keyword, setKeyword] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [loading, setLoading] = useState(true);
+  const canCreateStudent = ["system_admin", "school_admin", "teacher"].includes(
+    user?.role,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -53,8 +57,27 @@ function StudentListPage() {
     };
   }, []);
 
+  const grades = useMemo(() => {
+    const unique = new Set(classes.map((classroom) => classroom.grade_level));
+    return [...unique].sort((a, b) => a - b);
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    if (!selectedGrade) return classes;
+    return classes.filter(
+      (classroom) => String(classroom.grade_level) === selectedGrade,
+    );
+  }, [selectedGrade, classes]);
+
   const filteredStudents = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
+    const gradeClassIds = selectedGrade
+      ? new Set(
+          classes
+            .filter((classroom) => String(classroom.grade_level) === selectedGrade)
+            .map((classroom) => classroom.id),
+        )
+      : null;
 
     return students.filter((student) => {
       const matchesKeyword =
@@ -63,10 +86,12 @@ function StudentListPage() {
         student.student_code?.toLowerCase().includes(normalizedKeyword);
       const matchesClass =
         !selectedClass || String(student.classroom_id) === selectedClass;
+      const matchesGrade =
+        !gradeClassIds || gradeClassIds.has(student.classroom_id);
 
-      return matchesKeyword && matchesClass;
+      return matchesKeyword && matchesClass && matchesGrade;
     });
-  }, [keyword, selectedClass, students]);
+  }, [keyword, selectedClass, selectedGrade, students, classes]);
 
   return (
     <div className="space-y-5">
@@ -77,14 +102,14 @@ function StudentListPage() {
             Quản lý hồ sơ học sinh và phân lớp.
           </p>
         </div>
-        {user?.role === "admin" ? (
+        {canCreateStudent ? (
           <Button as={Link} icon={Plus} to="/hoc-sinh/them">
             Thêm học sinh
           </Button>
         ) : null}
       </div>
 
-      <div className="grid gap-3 ">
+      <div className="grid gap-3">
         <Input
           id="student-search"
           onChange={(event) => setKeyword(event.target.value)}
@@ -92,20 +117,40 @@ function StudentListPage() {
           value={keyword}
         />
 
-        <div className="w-full md:w-40">
-          <Select
-            id="student-class-filter"
-            label="Lọc theo lớp"
-            onChange={(event) => setSelectedClass(event.target.value)}
-            value={selectedClass}
-          >
-            <option value="">Tất cả lớp</option>
-            {classes.map((classroom) => (
-              <option key={classroom.id} value={classroom.id}>
-                {classroom.name}
-              </option>
-            ))}
-          </Select>
+        <div className="flex gap-3">
+          <div className="w-full md:w-40">
+            <Select
+              id="student-grade-filter"
+              label="Khối"
+              onChange={(event) => {
+                setSelectedGrade(event.target.value);
+                setSelectedClass("");
+              }}
+              value={selectedGrade}
+            >
+              <option value="">Tất cả khối</option>
+              {grades.map((grade) => (
+                <option key={grade} value={grade}>
+                  Khối {grade}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-full md:w-40">
+            <Select
+              id="student-class-filter"
+              label="Lớp"
+              onChange={(event) => setSelectedClass(event.target.value)}
+              value={selectedClass}
+            >
+              <option value="">Tất cả lớp</option>
+              {filteredClasses.map((classroom) => (
+                <option key={classroom.id} value={classroom.id}>
+                  {classroom.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -122,7 +167,11 @@ function StudentListPage() {
                 <div className="flex items-center gap-3">
                   <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-bg text-sm font-semibold text-brand-teal-dark">
                     {row.avatar_url ? (
-                      <img alt={row.full_name} className="size-full object-cover" src={row.avatar_url} />
+                      <img
+                        alt={row.full_name}
+                        className="size-full object-cover"
+                        src={row.avatar_url}
+                      />
                     ) : (
                       row.full_name?.charAt(0) || "H"
                     )}
@@ -147,11 +196,16 @@ function StudentListPage() {
             {
               header: "",
               key: "action",
-              render: () => (
-                <Search
-                  aria-hidden="true"
-                  className="size-4 text-brand-muted"
-                />
+              render: (row) => (
+                <Button
+                  as={Link}
+                  className="h-9 px-3"
+                  icon={Search}
+                  to={`/hoc-sinh/${row.id}`}
+                  variant="secondary"
+                >
+                  Xem
+                </Button>
               ),
             },
           ]}

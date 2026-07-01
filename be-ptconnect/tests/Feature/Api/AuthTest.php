@@ -33,7 +33,7 @@ class AuthTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success', 'message', 'data' => [
-                    'user' => ['id', 'name', 'email', 'role'],
+                    'user' => ['name', 'email', 'role'],
                     'access_token', 'refresh_token', 'token_type', 'expires_in',
                 ],
             ])
@@ -41,6 +41,7 @@ class AuthTest extends TestCase
                 'success' => true,
                 'message' => 'Login successful.',
             ]);
+        $this->assertArrayNotHasKey('id', $response->json('data.user'));
     }
 
     public function test_login_with_username_success(): void
@@ -193,8 +194,9 @@ class AuthTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'data' => ['user' => ['id' => $this->user->id, 'email' => 'admin@test.com', 'role' => 'admin']],
+                'data' => ['user' => ['email' => 'admin@test.com', 'role' => 'admin']],
             ]);
+        $this->assertArrayNotHasKey('id', $response->json('data.user'));
     }
 
     public function test_me_public_endpoint(): void

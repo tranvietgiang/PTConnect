@@ -1,12 +1,13 @@
 export function getDefaultRouteByRole(role) {
   switch (role) {
-    case 'admin':
+    case 'system_admin':
+    case 'school_admin':
       return '/tong-quan'
     case 'teacher':
       return '/hoc-sinh'
     case 'assistant':
       return '/diem-danh'
-    case 'parent':
+    case 'student':
       return '/phu-huynh'
     default:
       return '/dang-nhap'
@@ -22,7 +23,7 @@ export function getSafeRedirectPath(role, pathname) {
     return getDefaultRouteByRole(role)
   }
 
-  if (pathname === '/tong-quan' && role !== 'admin') {
+  if (pathname === '/tong-quan' && !['system_admin', 'school_admin'].includes(role)) {
     return getDefaultRouteByRole(role)
   }
 

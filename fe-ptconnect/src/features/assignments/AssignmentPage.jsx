@@ -120,9 +120,10 @@ function isSubmitted(row) {
 function AssignmentPage() {
   const { user } = useAuth();
   const toast = useToast();
-  const canCreate = ["admin", "teacher"].includes(user?.role);
-  const canAssignByGrade = user?.role === "admin";
-  const isParent = user?.role === "parent";
+  const isAdmin = ["system_admin", "school_admin"].includes(user?.role);
+  const canCreate = isAdmin || user?.role === "teacher";
+  const canAssignByGrade = isAdmin;
+  const isParent = user?.role === "student";
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedGradeLevel, setSelectedGradeLevel] = useState("all");
@@ -194,6 +195,16 @@ function AssignmentPage() {
         Number(classroom.grade_level) === Number(selectedGradeLevel),
     );
   }, [classes, selectedGradeLevel]);
+
+  const formClassOptions = useMemo(() => {
+    if (!canAssignByGrade || !form.grade_level) {
+      return classes;
+    }
+
+    return classes.filter(
+      (classroom) => Number(classroom.grade_level) === Number(form.grade_level),
+    );
+  }, [canAssignByGrade, classes, form.grade_level]);
 
   const visibleAssignments = useMemo(() => {
     const searchTerm = normalizeSearch(studentSearch);
@@ -332,6 +343,40 @@ function AssignmentPage() {
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
+  const handleAssignmentGradeChange = (value) => {
+    setForm((current) => {
+      const classesInGrade = value
+        ? classes.filter((classroom) => Number(classroom.grade_level) === Number(value))
+        : classes;
+      const selectedClassroom = classesInGrade.find(
+        (classroom) => String(classroom.id) === String(current.classroom_id),
+      );
+
+      return {
+        ...current,
+        grade_level: value,
+        classroom_id: selectedClassroom ? current.classroom_id : String(classesInGrade[0]?.id || ""),
+      };
+    });
+    setErrors((current) => ({ ...current, scope: undefined }));
+  };
+
+  const handleAssignmentClassChange = (value) => {
+    const selectedClassroom = classes.find(
+      (classroom) => String(classroom.id) === String(value),
+    );
+
+    setForm((current) => ({
+      ...current,
+      classroom_id: value,
+      grade_level:
+        canAssignByGrade && selectedClassroom
+          ? String(selectedClassroom.grade_level)
+          : current.grade_level,
+    }));
+    setErrors((current) => ({ ...current, scope: undefined }));
+  };
+
   const validateForm = () => {
     const nextErrors = {};
 
@@ -357,6 +402,7 @@ function AssignmentPage() {
 
   const handleCreate = async (event) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
 
     if (!validateForm()) return;
 
@@ -367,9 +413,11 @@ function AssignmentPage() {
       payload.append("title", form.title.trim());
       payload.append("description", form.description.trim());
       payload.append("status", "published");
-      if (form.classroom_id) payload.append("classroom_id", form.classroom_id);
-      if (canAssignByGrade && form.grade_level)
+      if (form.classroom_id) {
+        payload.append("classroom_id", form.classroom_id);
+      } else if (canAssignByGrade && form.grade_level) {
         payload.append("grade_level", form.grade_level);
+      }
       if (form.due_date) payload.append("due_date", form.due_date);
       if (form.attachment_file)
         payload.append("attachment_file", form.attachment_file);
@@ -382,12 +430,12 @@ function AssignmentPage() {
       setForm({
         title: "",
         description: "",
-        classroom_id: "",
-        grade_level: "",
+        classroom_id: form.classroom_id,
+        grade_level: form.grade_level,
         due_date: "",
         attachment_file: null,
       });
-      event.currentTarget.reset();
+      formElement.reset();
       await loadData();
     } catch (error) {
       toast.error(
@@ -913,38 +961,41 @@ function AssignmentPage() {
               type="date"
               value={form.due_date}
             />
-            <Select
-              error={errors.scope}
-              id="assignment-class"
-              label="Giao theo lớp"
-              onChange={(event) =>
-                updateForm("classroom_id", event.target.value)
-              }
-              value={form.classroom_id}
-            >
-              <option value="">Không chọn lớp</option>
-              {classes.map((classroom) => (
-                <option key={classroom.id} value={classroom.id}>
-                  {classroom.name}
-                </option>
-              ))}
-            </Select>
             {canAssignByGrade ? (
               <Select
                 error={errors.scope}
                 id="assignment-grade"
-                label="Hoặc giao theo khối"
-                onChange={(event) =>
-                  updateForm("grade_level", event.target.value)
-                }
+                label="Giao theo khối"
+                onChange={(event) => handleAssignmentGradeChange(event.target.value)}
                 value={form.grade_level}
               >
-                <option value="">Không chọn khối</option>
+                <option value="">Chọn khối</option>
                 <option value="10">Khối 10</option>
                 <option value="11">Khối 11</option>
                 <option value="12">Khối 12</option>
               </Select>
             ) : null}
+            <Select
+              error={errors.scope}
+              id="assignment-class"
+              label={canAssignByGrade ? "Giao theo lớp" : "Lớp"}
+              disabled={canAssignByGrade && !form.grade_level}
+              onChange={(event) => handleAssignmentClassChange(event.target.value)}
+              value={form.classroom_id}
+            >
+              <option value="">
+                {canAssignByGrade
+                  ? form.grade_level
+                    ? "Chọn lớp trong khối"
+                    : "Chọn khối trước"
+                  : "Không chọn lớp"}
+              </option>
+              {formClassOptions.map((classroom) => (
+                <option key={classroom.id} value={classroom.id}>
+                  {classroom.name} - Khối {classroom.grade_level}
+                </option>
+              ))}
+            </Select>
             <Input
               id="assignment-description"
               label="Mô tả"

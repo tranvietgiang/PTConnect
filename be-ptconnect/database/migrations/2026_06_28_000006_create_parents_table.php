@@ -12,11 +12,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
-            $table->string('full_name');
-            $table->string('email')->index();
-            $table->string('phone')->nullable()->index();
-            $table->string('relationship');
-            $table->string('address')->nullable();
+            $table->string('full_name', 100);
+            $table->string('email', 191)->index();
+            $table->string('phone', 20)->nullable()->index();
+            $table->string('relationship', 50);
+            $table->string('address', 255)->nullable();
             $table->timestamps();
 
             $table->index(['student_id', 'relationship']);

@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Báo cáo tính năng PTConnect</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #eef4f4;
+      color: #183033;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.48;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 14mm;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    .cover {
+      display: grid;
+      align-content: space-between;
+      background:
+        linear-gradient(135deg, rgba(20, 125, 139, 0.12), rgba(196, 54, 54, 0.08)),
+        #ffffff;
+    }
+
+    .cover::after {
+      content: "";
+      position: absolute;
+      right: -45mm;
+      top: -38mm;
+      width: 125mm;
+      height: 125mm;
+      border-radius: 50%;
+      background: rgba(20, 125, 139, 0.12);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid #cfe3e4;
+      background: #ffffff;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0;
+      color: #105f69;
+    }
+
+    .muted {
+      color: #687b80;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 150mm;
+      margin: 34mm 0 10px;
+      color: #123236;
+      font-size: 36px;
+      line-height: 1.08;
+      letter-spacing: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      color: #105f69;
+      font-size: 20px;
+      line-height: 1.22;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      color: #183033;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 145mm;
+      font-size: 16px;
+      color: #425b60;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .metric,
+    .card {
+      border: 1px solid #d9e7e8;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px;
+      box-shadow: 0 8px 22px rgba(17, 62, 69, 0.06);
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #105f69;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .section {
+      margin-bottom: 18px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      border-radius: 999px;
+      background: #e6f4f3;
+      color: #105f69;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .pill.red {
+      background: #fdebea;
+      color: #b53636;
+    }
+
+    .pill.amber {
+      background: #fff4d7;
+      color: #8a5a00;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #d9e7e8;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 11.2px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #d9e7e8;
+      padding: 8px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th {
+      background: #eef8f8;
+      color: #105f69;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    ul,
+    ol {
+      margin: 0 0 0 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 3px 0;
+    }
+
+    code {
+      border-radius: 4px;
+      background: #f1f5f5;
+      color: #14363a;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10.8px;
+      padding: 1px 4px;
+    }
+
+    .note {
+      border-left: 4px solid #c43636;
+      background: #fff7f6;
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      color: #4a3030;
+    }
+
+    .success {
+      border-left: 4px solid #147d8b;
+      background: #f0fbfa;
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      color: #234d51;
+    }
+
+    .feature-title {
+      color: #123236;
+      font-weight: 800;
+    }
+
+    .small {
+      font-size: 10.5px;
+    }
+
+    .footer {
+      position: absolute;
+      right: 14mm;
+      bottom: 9mm;
+      left: 14mm;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #e3eded;
+      padding-top: 6px;
+      color: #7a8b90;
+      font-size: 10px;
+    }
+
+    .demo-flow {
+      counter-reset: demo;
+      display: grid;
+      gap: 8px;
+    }
+
+    .step {
+      position: relative;
+      border: 1px solid #d9e7e8;
+      border-radius: 8px;
+      padding: 10px 10px 10px 38px;
+      background: #ffffff;
+    }
+
+    .step::before {
+      counter-increment: demo;
+      content: counter(demo);
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #147d8b;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        margin: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="topbar">
+        <img class="logo" src="../fe-ptconnect/public/logo-ptconnect/ptconnect-favicon-512.png" alt="PTConnect logo">
+        <div>
+          <div class="brand">PTConnect</div>
+          <div class="muted">Hệ thống quản lý học sinh và kết nối phụ huynh</div>
+        </div>
+      </div>
+
+      <h1>Báo cáo tính năng đã hoàn thành</h1>
+      <p class="subtitle">
+        Tài liệu tổng hợp các chức năng đã xây dựng để báo cáo và demo: quản lý lớp, học sinh,
+        điểm danh, bài tập, điểm số, phân quyền và cổng phụ huynh cho lớp học thêm môn Sinh học.
+      </p>
+    </div>
+
+    <div class="cover-meta">
+      <div class="metric">
+        <strong>4 vai trò</strong>
+        Admin, giáo viên, trợ giảng, phụ huynh
+      </div>
+      <div class="metric">
+        <strong>159 tests pass</strong>
+        Backend Laravel test suite, 289 assertions
+      </div>
+      <div class="metric">
+        <strong>Build OK</strong>
+        Frontend React/Vite build thành công
+      </div>
+      <div class="metric">
+        <strong>29/06/2026</strong>
+        Ngày xuất báo cáo
+      </div>
+      <div class="metric">
+        <strong>React + Laravel</strong>
+        Frontend SPA và backend REST API
+      </div>
+      <div class="metric">
+        <strong>Docker ready</strong>
+        MySQL, backend, frontend, queue worker, phpMyAdmin
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>PTConnect - Báo cáo demo</span>
+      <span>Trang bìa</span>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section">
+      <h2>1. Tổng quan hệ thống</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Mục tiêu</h3>
+          <ul>
+            <li>Quản lý lớp học thêm môn Sinh học theo khối 10, 11, 12.</li>
+            <li>Theo dõi hồ sơ học sinh, sĩ số, lớp học và phụ huynh liên kết.</li>
+            <li>Hỗ trợ điểm danh theo từng buổi học, có trạng thái có mặt, đi muộn, vắng.</li>
+            <li>Giao bài tập, nộp file, tải tài liệu, chấm điểm và nhận xét.</li>
+            <li>Cho phụ huynh xem thông tin, lịch sử điểm danh, điểm số và bài tập của con.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Công nghệ sử dụng</h3>
+          <p>
+            <span class="pill">React 19</span>
+            <span class="pill">Vite 8</span>
+            <span class="pill">Tailwind CSS 4</span>
+            <span class="pill">Axios</span>
+            <span class="pill">Lucide icons</span>
+            <span class="pill">Sonner toast</span>
+          </p>
+          <p>
+            <span class="pill red">Laravel 12</span>
+            <span class="pill red">PHP 8.2</span>
+            <span class="pill red">MySQL 8</span>
+            <span class="pill red">JWT</span>
+            <span class="pill red">Queue worker</span>
+            <span class="pill red">Mail</span>
+          </p>
+          <p class="small muted">Triển khai local bằng <code>docker-compose.yml</code> gồm MySQL, backend, frontend, queue-worker và phpMyAdmin.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. Vai trò và quyền sử dụng</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Vai trò</th>
+            <th>Quyền chính đã làm</th>
+            <th>Trang demo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Admin</strong></td>
+            <td>Toàn quyền quản lý lớp, học sinh, buổi học, điểm danh, bài tập, điểm số, báo cáo.</td>
+            <td><code>/tong-quan</code>, <code>/lop-hoc</code>, <code>/hoc-sinh</code>, <code>/buoi-hoc</code></td>
+          </tr>
+          <tr>
+            <td><strong>Teacher</strong></td>
+            <td>Xem lớp/học sinh được phân công, giao bài, theo dõi bài nộp, tải file, chấm điểm và nhận xét.</td>
+            <td><code>/bai-tap</code>, <code>/diem-so</code>, <code>/diem-so/bao-cao</code></td>
+          </tr>
+          <tr>
+            <td><strong>Assistant</strong></td>
+            <td>Xem lớp/học sinh được phân công, thực hiện điểm danh và xem lịch sử điểm danh.</td>
+            <td><code>/diem-danh</code>, <code>/diem-danh/lich-su</code></td>
+          </tr>
+          <tr>
+            <td><strong>Parent</strong></td>
+            <td>Chỉ xem dữ liệu của con, xem điểm danh/điểm số/bài tập, nộp hoặc cập nhật file bài làm.</td>
+            <td><code>/phu-huynh</code>, <code>/phu-huynh/diem-so</code>, <code>/bai-tap</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="success small">
+        Backend có middleware JWT và middleware phân quyền. Frontend cũng có ProtectedRoute và menu sidebar lọc theo vai trò,
+        nhưng backend vẫn là lớp chặn quyền chính khi gọi API.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>3. Tài khoản demo từ seeder</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Vai trò</th>
+            <th>Email hoặc username</th>
+            <th>Mật khẩu</th>
+            <th>Ghi chú demo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Admin</td>
+            <td><code>admin@ptconnect.test</code> hoặc <code>admin</code></td>
+            <td><code>12345678</code></td>
+            <td>Vào trang quản trị đầy đủ.</td>
+          </tr>
+          <tr>
+            <td>Teacher</td>
+            <td><code>teacher@ptconnect.test</code> hoặc <code>teacher</code></td>
+            <td><code>12345678</code></td>
+            <td>Demo giao bài, chấm điểm, xem điểm.</td>
+          </tr>
+          <tr>
+            <td>Assistant</td>
+            <td><code>assistant@ptconnect.test</code> hoặc <code>assistant</code></td>
+            <td><code>12345678</code></td>
+            <td>Demo điểm danh theo lớp và buổi.</td>
+          </tr>
+          <tr>
+            <td>Parent</td>
+            <td><code>HS1001001</code> hoặc <code>hs1001001@parent.ptconnect.test</code></td>
+            <td><code>12345678</code></td>
+            <td>Tài khoản phụ huynh của học sinh demo lớp 10A1.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span>PTConnect - Tổng quan</span>
+      <span>Trang 2</span>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section">
+      <h2>4. Bảng tính năng đã hoàn thành</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 26%;">Nhóm tính năng</th>
+            <th>Đã làm</th>
+            <th style="width: 28%;">Cách demo nhanh</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feature-title">Đăng nhập và phiên làm việc</td>
+            <td>Đăng nhập bằng email hoặc username, JWT access token, refresh token, ghi nhớ đăng nhập bằng cookie, logout, tự khôi phục phiên.</td>
+            <td>Đăng nhập staff ở <code>/dang-nhap</code>, phụ huynh ở <code>/phu-huynh/dang-nhap</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Phân quyền</td>
+            <td>Route API có <code>jwt.auth</code> và <code>role</code>; frontend có ProtectedRoute, redirect theo role và sidebar chỉ hiện menu được phép.</td>
+            <td>Thử dùng teacher vào trang admin hoặc assistant vào điểm số sẽ bị chặn quyền.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Quản lý lớp học</td>
+            <td>Danh sách lớp, chi tiết lớp, tạo lớp, cập nhật lớp, ngày bắt đầu/kết thúc, tổng số buổi, sĩ số, năm học active.</td>
+            <td>Admin vào <code>/lop-hoc</code> và <code>/lop-hoc/them</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Quản lý học sinh</td>
+            <td>Danh sách học sinh, tìm theo tên/mã, lọc theo lớp, xem chi tiết, tạo hồ sơ, upload ảnh, import danh sách bằng Excel/CSV.</td>
+            <td>Admin vào <code>/hoc-sinh</code>, dùng file <code>docs/student-import-demo.xlsx</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Quản lý buổi học</td>
+            <td>Admin tạo/sửa/xóa buổi học theo lớp, ngày, số buổi; chống trùng buổi học trong cùng lớp/ngày; lọc theo khối/lớp/ngày.</td>
+            <td>Admin vào <code>/buoi-hoc</code>, chọn Lesson 1-30 theo tổng buổi của lớp.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Điểm danh</td>
+            <td>Admin/assistant lấy danh sách học sinh theo lớp/ngày/buổi, đánh dấu có mặt, đi muộn kèm số phút, vắng, lưu lịch sử.</td>
+            <td>Assistant vào <code>/diem-danh</code>, đổi trạng thái vài học sinh rồi gửi.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Thông báo điểm danh</td>
+            <td>Khi học sinh đi muộn hoặc vắng, backend tạo notification recipient, email log và queue email thông báo phụ huynh.</td>
+            <td>Sau khi gửi điểm danh vắng/muộn, phụ huynh xem lịch sử ở <code>/phu-huynh</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Bài tập</td>
+            <td>Admin/teacher tạo bài tập, giao theo lớp hoặc theo khối, hạn nộp, file đính kèm, tải tài liệu.</td>
+            <td>Teacher hoặc admin vào <code>/bai-tap</code>, tạo bài tập mới.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Nộp bài và chấm điểm</td>
+            <td>Phụ huynh nộp/cập nhật file bài làm cho con; giáo viên/admin tải bài nộp, nhập điểm 0-10, nhận xét, lọc đã nộp/chưa nộp/đã chấm.</td>
+            <td>Parent nộp file ở <code>/bai-tap</code>, teacher chấm tại cùng trang.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Điểm số và báo cáo</td>
+            <td>Danh sách điểm lấy từ bài nộp đã chấm, lọc khối/lớp/tên học sinh; báo cáo theo lớp gồm giỏi, khá, cần hỗ trợ, trung bình.</td>
+            <td>Teacher/admin vào <code>/diem-so</code> và <code>/diem-so/bao-cao</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Cổng phụ huynh</td>
+            <td>Phụ huynh xem hồ sơ con, lớp, số bài đã chấm, điểm trung bình, lịch sử điểm danh, điểm số, file bài nộp và nhận xét.</td>
+            <td>Parent vào <code>/phu-huynh</code>, <code>/phu-huynh/diem-so</code>, <code>/bai-tap</code>.</td>
+          </tr>
+          <tr>
+            <td class="feature-title">Dữ liệu demo và DevOps</td>
+            <td>Seeder tạo năm học, lớp 10-12, học sinh, phụ huynh, bài tập, bài nộp, điểm, điểm danh và thông báo demo; Docker Compose đủ service local.</td>
+            <td>Chạy seed rồi demo theo các tài khoản ở trang 2.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note small">
+        Trang <code>/thong-bao</code> hiện có giao diện danh sách/tạo thông báo mẫu. Luồng thông báo thực tế đã có ở backend khi điểm danh học sinh vắng hoặc đi muộn.
+      </p>
+    </div>
+
+    <div class="footer">
+      <span>PTConnect - Tính năng</span>
+      <span>Trang 3</span>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section">
+      <h2>5. Luồng demo đề xuất</h2>
+      <div class="demo-flow">
+        <div class="step">
+          <h3>Khởi động hệ thống</h3>
+          <p>Chạy <code>docker compose up --build</code>. Mở frontend <code>http://localhost:5173</code>, backend API <code>http://localhost:8000</code>, phpMyAdmin <code>http://localhost:8080</code>.</p>
+        </div>
+        <div class="step">
+          <h3>Admin - quản lý dữ liệu nền</h3>
+          <p>Đăng nhập admin, mở Tổng quan, Lớp học, Học sinh. Tạo lớp mới, import học sinh bằng file Excel/CSV, xem chi tiết lớp và danh sách học sinh.</p>
+        </div>
+        <div class="step">
+          <h3>Admin - quản lý buổi học</h3>
+          <p>Vào <code>/buoi-hoc</code>, tạo một buổi học cho lớp 10A1, sửa tên buổi hoặc ghi chú, lọc lại theo khối/lớp/ngày.</p>
+        </div>
+        <div class="step">
+          <h3>Assistant - điểm danh</h3>
+          <p>Đăng nhập assistant, vào <code>/diem-danh</code>, chọn lớp/ngày/buổi. Đánh dấu một học sinh đi muộn, một học sinh vắng, sau đó gửi điểm danh.</p>
+        </div>
+        <div class="step">
+          <h3>Teacher - giao bài và chấm bài</h3>
+          <p>Đăng nhập teacher, vào <code>/bai-tap</code>, tạo bài tập có hạn nộp và file đính kèm. Lọc bài nộp theo lớp/trạng thái, tải file bài nộp, nhập điểm và nhận xét.</p>
+        </div>
+        <div class="step">
+          <h3>Parent - xem thông tin con</h3>
+          <p>Đăng nhập phụ huynh, mở <code>/phu-huynh</code> để xem hồ sơ, điểm trung bình và lịch sử điểm danh. Kiểm tra trạng thái đi muộn/vắng vừa tạo.</p>
+        </div>
+        <div class="step">
+          <h3>Parent - nộp bài và xem điểm</h3>
+          <p>Vào <code>/bai-tap</code> để tải tài liệu và nộp file. Sau khi teacher chấm, vào <code>/phu-huynh/diem-so</code> để xem điểm, nhận xét và tải lại file bài nộp.</p>
+        </div>
+        <div class="step">
+          <h3>Kết luận demo</h3>
+          <p>Mở <code>/diem-so/bao-cao</code> để cho thấy dữ liệu được tổng hợp theo lớp: số bài đã chấm, nhóm điểm và điểm trung bình.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>6. Các API chính</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Endpoint tiêu biểu</th>
+            <th>Vai trò</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Auth</td>
+            <td><code>POST /api/auth/login</code>, <code>POST /api/auth/refresh</code>, <code>GET /api/auth/me</code>, <code>POST /api/auth/logout</code></td>
+            <td>Tất cả</td>
+          </tr>
+          <tr>
+            <td>Classroom</td>
+            <td><code>GET /api/classes</code>, <code>POST /api/classes</code>, <code>PUT /api/classes/{id}</code></td>
+            <td>Admin tạo/sửa; các role xem theo phạm vi</td>
+          </tr>
+          <tr>
+            <td>Student</td>
+            <td><code>GET /api/students</code>, <code>POST /api/students</code>, <code>POST /api/students/import</code></td>
+            <td>Admin tạo/import; teacher/assistant/parent xem theo phạm vi</td>
+          </tr>
+          <tr>
+            <td>Attendance</td>
+            <td><code>GET /api/attendance/today</code>, <code>POST /api/attendance</code>, <code>GET /api/attendance/history</code>, <code>GET /api/attendance/parent</code></td>
+            <td>Admin, assistant, parent</td>
+          </tr>
+          <tr>
+            <td>Assignments</td>
+            <td><code>GET /api/assignments</code>, <code>POST /api/assignments</code>, <code>POST /api/assignments/{id}/submissions</code>, <code>PATCH /api/assignment-submissions/{id}/grade</code></td>
+            <td>Admin, teacher, parent</td>
+          </tr>
+          <tr>
+            <td>Scores</td>
+            <td><code>GET /api/scores</code>, <code>GET /api/scores/report</code></td>
+            <td>Admin, teacher, parent theo phạm vi</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span>PTConnect - Demo và API</span>
+      <span>Trang 4</span>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section">
+      <h2>7. Điểm nổi bật kỹ thuật</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Bảo mật và phân quyền</h3>
+          <ul>
+            <li>JWT access token cho API nội bộ.</li>
+            <li>Refresh token và remember cookie HTTP-only cho chức năng ghi nhớ đăng nhập.</li>
+            <li>Middleware backend chặn request không có token hoặc sai vai trò.</li>
+            <li>Parent chỉ đọc dữ liệu học sinh liên kết trong <code>parent_profiles</code>.</li>
+            <li>Teacher/assistant bị giới hạn theo lớp phân công trong <code>class_user_assignments</code>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dữ liệu và file</h3>
+          <ul>
+            <li>Import học sinh từ CSV/XLSX, map được header tiếng Việt hoặc tiếng Anh.</li>
+            <li>Upload ảnh học sinh và file bài tập/bài nộp.</li>
+            <li>Download file đính kèm và bài nộp có kiểm tra quyền.</li>
+            <li>Seeder sinh dữ liệu demo đủ lớp, học sinh, phụ huynh, bài tập và điểm danh.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Trải nghiệm frontend</h3>
+          <ul>
+            <li>React Router bảo vệ route theo vai trò.</li>
+            <li>Sidebar hiển thị đúng menu cho từng user.</li>
+            <li>Toast phản hồi thành công/thất bại, trạng thái loading và form validation.</li>
+            <li>Bảng dữ liệu có lọc theo lớp, khối, tên học sinh, trạng thái bài nộp.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Thông báo và queue</h3>
+          <ul>
+            <li>Điểm danh vắng/đi muộn tự tạo notification và recipient.</li>
+            <li>Ghi nhận email log theo phụ huynh, học sinh và bản ghi điểm danh.</li>
+            <li>Docker có queue worker để xử lý mail queue trong môi trường demo.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>8. Kiểm thử và trạng thái hiện tại</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Hạng mục</th>
+            <th>Lệnh đã chạy</th>
+            <th>Kết quả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Backend automated tests</td>
+            <td><code>php artisan test</code></td>
+            <td><strong>159 passed</strong>, 289 assertions, chạy ngày 29/06/2026.</td>
+          </tr>
+          <tr>
+            <td>Frontend production build</td>
+            <td><code>npm run build</code></td>
+            <td><strong>Build thành công</strong>, 164 modules transformed.</td>
+          </tr>
+          <tr>
+            <td>Module được test nhiều</td>
+            <td>Feature/API + Model tests</td>
+            <td>Auth, Classroom, Student, Attendance, Assignment, Score-related submissions, Notification, EmailLog.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="success small">
+        Điểm demo nên nhấn mạnh: backend test suite đã pass toàn bộ, frontend build được bản production, các luồng chính đã có dữ liệu seeder để trình bày ngay.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>9. Gợi ý trình bày với Cô</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Nói ngắn gọn</h3>
+          <p>PTConnect là hệ thống quản lý lớp học thêm môn Sinh học, tập trung vào kết nối giữa trung tâm, giáo viên/trợ giảng và phụ huynh.</p>
+        </div>
+        <div class="card">
+          <h3>Nêu luồng chính</h3>
+          <p>Admin tạo lớp/học sinh, trợ giảng điểm danh, giáo viên giao và chấm bài, phụ huynh xem kết quả và nộp bài.</p>
+        </div>
+        <div class="card">
+          <h3>Chứng minh chất lượng</h3>
+          <p>Cho xem phân quyền, test pass, build pass, dữ liệu demo và các API được kiểm tra bằng test tự động.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>PTConnect - Kiểm thử</span>
+      <span>Trang 5</span>
+    </div>
+  </section>
+</body>
+</html>

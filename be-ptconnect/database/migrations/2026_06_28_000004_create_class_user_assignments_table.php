@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('classroom_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('role_in_class')->index();
+            $table->string('role_in_class', 50)->index();
             $table->timestamps();
 
             $table->unique(['classroom_id', 'user_id', 'role_in_class'], 'class_user_role_unique');

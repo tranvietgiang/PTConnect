@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\AssistantAssignment;
 use App\Models\Classroom;
 use App\Models\ParentProfile;
+use App\Models\StudentEnrollment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,16 +18,23 @@ class ClassroomController extends Controller
     {
         $user = $request->attributes->get('auth_user');
         $query = Classroom::query()
-            ->withCount('students')
-            ->with('academicYear:id,name')
-            ->orderBy('grade_level')
+            ->with('course:id,name,grade_level,start_date,end_date,status')
+            ->withCount([
+                'studentEnrollments as students_count' => fn ($inner) => $inner->where('status', StudentEnrollment::STATUS_ACTIVE),
+            ])
             ->orderBy('name');
 
-        if ($user->role === 'parent') {
-            $query->whereIn('id', $this->parentClassroomIds($user->id));
-        } elseif (in_array($user->role, ['teacher', 'assistant'], true)) {
-            $query->whereHas('users', fn ($inner) => $inner->where('users.id', $user->id));
-        } elseif ($user->role !== 'admin') {
+        if ($user->isStudent()) {
+            $query->whereHas('studentEnrollments.studentProfile', fn ($inner) => $inner->where('user_id', $user->id));
+        } elseif ($user->isTeacher() || $user->isAssistant()) {
+            if ($user->isTeacher()) {
+                $query->where('teacher_id', $user->id);
+            } else {
+                $query->whereHas('assistantAssignments', fn ($inner) => $inner
+                    ->where('assistant_id', $user->id)
+                    ->where('status', AssistantAssignment::STATUS_ACTIVE));
+            }
+        } elseif (! $user->isAdmin()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -36,7 +45,7 @@ class ClassroomController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if ($request->attributes->get('auth_user')?->role !== 'admin') {
+        if (! $request->attributes->get('auth_user')?->isAdmin()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -78,7 +87,7 @@ class ClassroomController extends Controller
 
     public function update(Request $request, Classroom $classroom): JsonResponse
     {
-        if ($request->attributes->get('auth_user')?->role !== 'admin') {
+        if (! $request->attributes->get('auth_user')?->isAdmin()) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -121,11 +130,19 @@ class ClassroomController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        $classroom->load(['academicYear:id,name', 'students'])->loadCount('students');
-        $students = $classroom->students;
+        $classroom->load([
+            'course:id,name,grade_level,start_date,end_date,status',
+            'studentEnrollments.studentProfile',
+        ])->loadCount([
+            'studentEnrollments as students_count' => fn ($inner) => $inner->where('status', StudentEnrollment::STATUS_ACTIVE),
+        ]);
+        $students = $classroom->studentEnrollments
+            ->where('status', StudentEnrollment::STATUS_ACTIVE)
+            ->pluck('studentProfile')
+            ->filter();
 
-        if ($user->role === 'parent') {
-            $students = $students->whereIn('id', $this->parentStudentIds($user->id));
+        if ($user->isStudent()) {
+            $students = $students->where('user_id', $user->id);
             $classroom->students_count = $students->count();
         }
 
@@ -135,24 +152,31 @@ class ClassroomController extends Controller
                 'id' => $student->id,
                 'student_code' => $student->student_code,
                 'full_name' => $student->full_name,
-                'status' => $student->status,
+                'status' => 'studying',
             ])->all(),
         ]);
     }
 
     private function serialize(Classroom $classroom): array
     {
+        $classroom->loadMissing('course:id,name,grade_level,start_date,end_date,status');
+        $course = $classroom->course;
+
         return [
             'id' => $classroom->id,
+            'course_id' => $classroom->course_id,
+            'course_name' => $course?->name,
+            'teacher_id' => $classroom->teacher_id,
             'name' => $classroom->name,
-            'grade_level' => $classroom->grade_level,
-            'start_date' => $classroom->start_date?->toDateString(),
-            'end_date' => $classroom->end_date?->toDateString(),
-            'total_lessons' => $classroom->total_lessons,
-            'description' => $classroom->description,
-            'academic_year' => $classroom->academicYear?->name,
+            'grade_level' => $course?->grade_level,
+            'start_date' => $course?->start_date?->toDateString(),
+            'end_date' => $course?->end_date?->toDateString(),
+            'total_lessons' => $classroom->total_lessons ?? null,
+            'description' => $classroom->description ?? null,
+            'academic_year' => null,
             'students_count' => $classroom->students_count ?? 0,
-            'is_active' => $classroom->is_active,
+            'is_active' => $classroom->status === 'active',
+            'status' => $classroom->status,
         ];
     }
 
@@ -169,16 +193,25 @@ class ClassroomController extends Controller
     {
         $user = $request->attributes->get('auth_user');
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
 
-        if (in_array($user->role, ['teacher', 'assistant'], true)) {
-            return $classroom->users()->where('users.id', $user->id)->exists();
+        if ($user->isTeacher() || $user->isAssistant()) {
+            if ($user->isTeacher()) {
+                return (int) $classroom->teacher_id === (int) $user->id;
+            }
+
+            return $classroom->assistantAssignments()
+                ->where('assistant_id', $user->id)
+                ->where('status', AssistantAssignment::STATUS_ACTIVE)
+                ->exists();
         }
 
-        if ($user->role === 'parent') {
-            return in_array($classroom->id, $this->parentClassroomIds($user->id), true);
+        if ($user->isStudent()) {
+            return $classroom->studentEnrollments()
+                ->whereHas('studentProfile', fn ($inner) => $inner->where('user_id', $user->id))
+                ->exists();
         }
 
         return false;

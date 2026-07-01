@@ -17,6 +17,10 @@ class AssignmentSubmission extends Model
         'status',
         'score',
         'teacher_comment',
+        'email_status',
+        'score_emailed_at',
+        'email_sent_by',
+        'email_error',
     ];
 
     protected function casts(): array
@@ -24,6 +28,7 @@ class AssignmentSubmission extends Model
         return [
             'submitted_at' => 'datetime',
             'score' => 'decimal:2',
+            'score_emailed_at' => 'datetime',
         ];
     }
 

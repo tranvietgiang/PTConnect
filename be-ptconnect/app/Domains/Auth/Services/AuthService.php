@@ -20,8 +20,8 @@ class AuthService
 
     public function login(array $credentials): array
     {
-        $identifier = trim((string) ($credentials['email'] ?? $credentials['username'] ?? ''));
-        $user = $this->findUserByIdentifier($identifier);
+        $email = new Email(trim((string) $credentials['email']));
+        $user = $this->authRepository->findUserByEmail($email->value());
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw new InvalidCredentialsException();
@@ -99,25 +99,14 @@ class AuthService
         return $this->me($userId);
     }
 
-    private function findUserByIdentifier(string $identifier)
-    {
-        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            $email = new Email($identifier);
-
-            return $this->authRepository->findUserByEmail($email->value());
-        }
-
-        return $this->authRepository->findUserByUsername($identifier);
-    }
-
     private function serializeUser($user): array
     {
-        $name = $user->parentProfile?->full_name
+        $name = $user->name
+            ?: $user->studentProfile?->full_name
             ?: $user->username
             ?: $user->email;
 
         return [
-            'id' => $user->id,
             'name' => $name,
             'email' => $user->email,
             'username' => $user->username,

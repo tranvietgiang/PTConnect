@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table): void {
             $table->id();
-            $table->string('title');
+            $table->string('title', 200);
             $table->text('content');
-            $table->string('type')->index();
+            $table->string('type', 50)->index();
             $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
-            $table->string('target_type')->index();
+            $table->string('target_type', 50)->index();
             $table->foreignId('classroom_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedTinyInteger('grade_level')->nullable()->index();
             $table->foreignId('student_id')->nullable()->constrained()->nullOnDelete();

@@ -12,14 +12,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('attendance_session_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
-            $table->string('status')->index();
+            $table->enum('status', ['present', 'absent', 'late'])->index();
             $table->unsignedInteger('late_minutes')->nullable()->default(0);
             $table->text('note')->nullable();
-            $table->timestamp('email_sent_at')->nullable()->index();
+            $table->enum('email_status', ['not_sent', 'sent', 'failed'])->default('not_sent')->index();
+            $table->timestamp('emailed_at')->nullable()->index();
+            $table->foreignId('email_sent_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->unique(['attendance_session_id', 'student_id'], 'attendance_student_unique');
             $table->index(['student_id', 'status']);
+            $table->index(['email_status', 'emailed_at']);
         });
     }
 
