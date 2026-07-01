@@ -70,7 +70,7 @@ function ClassListPage() {
               ),
             },
             { header: 'Khối', key: 'grade_level', render: (row) => `Khối ${row.grade_level}` },
-            { header: 'Năm học', key: 'academic_year' },
+            { header: 'Năm học', key: 'academic_year', render: (row) => row.academic_year?.name || '-' },
             {
               header: 'Thời gian',
               key: 'duration',

@@ -3,6 +3,7 @@ import AuthLayout from '../layouts/AuthLayout'
 import MainLayout from '../layouts/MainLayout'
 import AttendanceHistoryPage from '../features/attendance/AttendanceHistoryPage'
 import AttendancePage from '../features/attendance/AttendancePage'
+import AttendanceSessionManagePage from '../features/attendance/AttendanceSessionManagePage'
 import AssignmentPage from '../features/assignments/AssignmentPage'
 import LoginPage from '../features/auth/LoginPage'
 import ClassCreatePage from '../features/classes/ClassCreatePage'
@@ -13,6 +14,8 @@ import ScoreReportPage from '../features/scores/ScoreReportPage'
 import StudentCreatePage from '../features/students/StudentCreatePage'
 import StudentDetailPage from '../features/students/StudentDetailPage'
 import StudentListPage from '../features/students/StudentListPage'
+import StudentScorePage from '../features/students/StudentScorePage'
+import NotificationPage from '../features/notifications/NotificationPage'
 import Loading from '../components/common/Loading'
 import DashboardPage from '../pages/DashboardPage'
 import HomePage from '../pages/HomePage'
@@ -75,7 +78,7 @@ function AppRoutes() {
               <Route element={<ClassCreatePage />} path="/lop-hoc/them" />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['school_admin', 'system_admin', 'teacher', 'assistant']} />}>
+            <Route element={<ProtectedRoute allowedRoles={staffRoles} />}>
               <Route element={<ScoreListPage />} path="/diem-so" />
               <Route element={<ScoreReportPage />} path="/diem-so/bao-cao" />
             </Route>
@@ -85,7 +88,15 @@ function AppRoutes() {
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-              <Route element={<ScoreListPage />} path="/diem-cua-toi" />
+              <Route element={<StudentScorePage />} path="/diem-cua-toi" />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={schoolRoles} />}>
+              <Route element={<AttendanceSessionManagePage />} path="/diem-danh/quan-ly-buoi" />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={staffRoles} />}>
+              <Route element={<NotificationPage />} path="/thong-bao" />
             </Route>
           </Route>
         </Route>

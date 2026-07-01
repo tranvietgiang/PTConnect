@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Save, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { classApi } from "../../api/classApi";
@@ -23,6 +23,7 @@ function StudentCreatePage() {
     student_email: "",
     parent_email: "",
     high_school_name: "",
+    grade_level: "",
     classroom_id: "",
     cccd: "",
     date_of_birth: "",
@@ -33,6 +34,7 @@ function StudentCreatePage() {
     parent_relation: "",
   });
   const [importForm, setImportForm] = useState({
+    grade_level: "",
     classroom_id: "",
     file: null,
   });
@@ -66,9 +68,55 @@ function StudentCreatePage() {
     };
   }, []);
 
+  const studentClasses = useMemo(() => {
+    if (!form.grade_level) {
+      return [];
+    }
+
+    return classes.filter(
+      (classroom) => String(classroom.grade_level) === String(form.grade_level),
+    );
+  }, [classes, form.grade_level]);
+
+  const importClasses = useMemo(() => {
+    if (!importForm.grade_level) {
+      return [];
+    }
+
+    return classes.filter(
+      (classroom) =>
+        String(classroom.grade_level) === String(importForm.grade_level),
+    );
+  }, [classes, importForm.grade_level]);
+
   const updateForm = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+
+      if (field === "grade_level") {
+        next.classroom_id = "";
+      }
+
+      return next;
+    });
+    setErrors((current) => ({
+      ...current,
+      [field]: undefined,
+      classroom_id: undefined,
+      grade_level: undefined,
+    }));
+  };
+
+  const updateImportForm = (field, value) => {
+    setImportForm((current) => {
+      const next = { ...current, [field]: value };
+
+      if (field === "grade_level") {
+        next.classroom_id = "";
+      }
+
+      return next;
+    });
   };
 
   const validateForm = () => {
@@ -82,7 +130,12 @@ function StudentCreatePage() {
       nextErrors.parent_email = "Vui lòng nhập email phụ huynh.";
     if (!form.high_school_name.trim())
       nextErrors.high_school_name = "Vui lòng nhập tên trường.";
-    if (!form.classroom_id) nextErrors.classroom_id = "Vui lòng chọn lớp.";
+    if (!form.grade_level) nextErrors.grade_level = "Vui lòng chọn khối.";
+    if (!form.classroom_id) {
+      nextErrors.classroom_id = form.grade_level
+        ? "Vui lòng chọn lớp."
+        : "Vui lòng chọn khối trước, sau đó chọn lớp.";
+    }
 
     setErrors(nextErrors);
 
@@ -105,7 +158,10 @@ function StudentCreatePage() {
     setSaving(true);
 
     try {
-      await studentApi.create(form);
+      const payload = { ...form };
+      delete payload.grade_level;
+
+      await studentApi.create(payload);
       toast.success("Đã lưu học sinh", "Hồ sơ học sinh mới đã được tạo.");
       navigate("/hoc-sinh", { replace: true });
     } catch (error) {
@@ -216,6 +272,21 @@ function StudentCreatePage() {
                 value={form.high_school_name}
               />
               <Select
+                error={errors.grade_level}
+                id="student-grade"
+                label="Khối"
+                onChange={(event) =>
+                  updateForm("grade_level", event.target.value)
+                }
+                value={form.grade_level}
+              >
+                <option value="">Chọn khối</option>
+                <option value="10">Khối 10</option>
+                <option value="11">Khối 11</option>
+                <option value="12">Khối 12</option>
+              </Select>
+              <Select
+                disabled={!form.grade_level}
                 error={errors.classroom_id}
                 id="student-class"
                 label="Lớp"
@@ -224,10 +295,12 @@ function StudentCreatePage() {
                 }
                 value={form.classroom_id}
               >
-                <option value="">Chọn lớp</option>
-                {classes.map((classroom) => (
+                <option value="">
+                  {form.grade_level ? "Chọn lớp" : "Chọn khối trước"}
+                </option>
+                {studentClasses.map((classroom) => (
                   <option key={classroom.id} value={classroom.id}>
-                    {classroom.name} - Khối {classroom.grade_level}
+                    {classroom.name}
                   </option>
                 ))}
               </Select>
@@ -323,20 +396,33 @@ function StudentCreatePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
+                id="import-grade"
+                label="Khối mặc định"
+                onChange={(event) =>
+                  updateImportForm("grade_level", event.target.value)
+                }
+                value={importForm.grade_level}
+              >
+                <option value="">Dùng cột class_name trong file</option>
+                <option value="10">Khối 10</option>
+                <option value="11">Khối 11</option>
+                <option value="12">Khối 12</option>
+              </Select>
+              <Select
+                disabled={!importForm.grade_level}
                 id="import-class"
                 label="Lớp mặc định"
                 onChange={(event) =>
-                  setImportForm((current) => ({
-                    ...current,
-                    classroom_id: event.target.value,
-                  }))
+                  updateImportForm("classroom_id", event.target.value)
                 }
                 value={importForm.classroom_id}
               >
-                <option value="">Dùng cột class_name trong file</option>
-                {classes.map((classroom) => (
+                <option value="">
+                  {importForm.grade_level ? "Chọn lớp" : "Chọn khối trước"}
+                </option>
+                {importClasses.map((classroom) => (
                   <option key={classroom.id} value={classroom.id}>
-                    {classroom.name} - Khối {classroom.grade_level}
+                    {classroom.name}
                   </option>
                 ))}
               </Select>

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clock, History, Save, X } from 'lucide-react'
+import { Check, Clock, History, Mail, MailCheck, Save, Send, Settings, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { attendanceApi } from '../../api/attendanceApi'
 import { classApi } from '../../api/classApi'
+import { emailNotificationApi } from '../../api/notificationApi'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 import Loading from '../../components/common/Loading'
 import Select from '../../components/common/Select'
 import Table from '../../components/common/Table'
+import { useAuth } from '../../store/useAuth'
 import { useToast } from '../../store/useToast'
 
 const statusOptions = {
@@ -16,18 +18,23 @@ const statusOptions = {
   absent: { label: 'Vắng', tone: 'bg-red-50 text-brand-red' },
 }
 
+const emailStatusOptions = {
+  not_required: { label: 'Không cần', tone: 'bg-gray-100 text-gray-500' },
+  pending: { label: 'Chờ gửi', tone: 'bg-amber-50 text-amber-700' },
+  sent: { label: 'Đã gửi', tone: 'bg-brand-teal-soft text-brand-teal-dark' },
+  failed: { label: 'Thất bại', tone: 'bg-red-50 text-brand-red' },
+}
+
 function today() {
   const date = new Date()
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-
   return `${year}-${month}-${day}`
 }
 
-function StatusBadge({ status }) {
-  const option = statusOptions[status] || statusOptions.present
-
+function StatusBadge({ status, options }) {
+  const option = options[status] || options.present
   return (
     <span className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-semibold ${option.tone}`}>
       {option.label}
@@ -45,6 +52,7 @@ function normalizeSearch(value) {
 }
 
 function AttendancePage() {
+  const { user } = useAuth()
   const toast = useToast()
   const [classes, setClasses] = useState([])
   const [selectedGradeLevel, setSelectedGradeLevel] = useState('all')
@@ -57,6 +65,7 @@ function AttendancePage() {
   const [loadingClasses, setLoadingClasses] = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -72,7 +81,6 @@ function AttendancePage() {
           setSelectedGradeLevel(firstClass ? String(firstClass.grade_level) : 'all')
           setSelectedClass((current) => {
             if (current) return current
-
             return firstClass ? String(firstClass.id) : ''
           })
         }
@@ -86,17 +94,12 @@ function AttendancePage() {
     }
 
     loadClasses()
-
-    return () => {
-      mounted = false
-    }
   }, [])
 
   const filteredClasses = useMemo(() => {
     if (selectedGradeLevel === 'all') {
       return classes
     }
-
     return classes.filter((classroom) => String(classroom.grade_level) === String(selectedGradeLevel))
   }, [classes, selectedGradeLevel])
 
@@ -108,17 +111,14 @@ function AttendancePage() {
   const lessonOptions = useMemo(() => {
     const totalLessons = Number(selectedClassroom?.total_lessons || 1)
     const safeTotalLessons = Number.isInteger(totalLessons) && totalLessons > 0 ? totalLessons : 1
-
     return Array.from({ length: safeTotalLessons }, (_, index) => index + 1)
   }, [selectedClassroom])
 
   const visibleRecords = useMemo(() => {
     const keyword = normalizeSearch(studentSearch)
-
     if (!keyword) {
       return records
     }
-
     return records.filter((record) => normalizeSearch(record.student_name).includes(keyword))
   }, [records, studentSearch])
 
@@ -126,7 +126,6 @@ function AttendancePage() {
     if (!selectedClass) {
       return
     }
-
     if (selectedClassroom && Number(lessonNumber) > Number(selectedClassroom.total_lessons || 1)) {
       return
     }
@@ -135,7 +134,6 @@ function AttendancePage() {
 
     async function loadAttendance() {
       setLoadingRecords(true)
-
       try {
         const response = await attendanceApi.getToday({
           classroom_id: selectedClass,
@@ -152,10 +150,11 @@ function AttendancePage() {
               row_key: record.student_id,
               status: record.status || 'present',
               late_minutes: record.status === 'late' ? record.late_minutes || 15 : 0,
+              email_status: record.email_status || 'not_required',
             })),
           )
         }
-      } catch (error) {
+      } catch {
         toast.error('Không tải được dữ liệu điểm danh', 'Vui lòng thử lại sau.')
       } finally {
         if (mounted) {
@@ -187,10 +186,7 @@ function AttendancePage() {
     setRecords((current) =>
       current.map((record) =>
         record.student_id === studentId
-          ? {
-              ...record,
-              ...patch,
-            }
+          ? { ...record, ...patch }
           : record,
       ),
     )
@@ -208,19 +204,14 @@ function AttendancePage() {
       value === 'all' ? classes : classes.filter((classroom) => String(classroom.grade_level) === String(value))
 
     setSelectedGradeLevel(value)
-
-    if (value === 'all') {
-      return
-    }
+    if (value === 'all') return
 
     const currentClass = classes.find((classroom) => String(classroom.id) === String(selectedClass))
     const nextClass = currentClass && String(currentClass.grade_level) === String(value) ? currentClass : nextClasses[0]
     const nextClassId = String(nextClass?.id || '')
-
     setSelectedClass(nextClassId)
     setLessonNumber('1')
     setSessionName('Lesson 1')
-
     if (!nextClassId) {
       setRecords([])
     }
@@ -230,7 +221,6 @@ function AttendancePage() {
     setSelectedClass(value)
     setLessonNumber('1')
     setSessionName('Lesson 1')
-
     if (!value) {
       setRecords([])
     }
@@ -243,7 +233,6 @@ function AttendancePage() {
     }
 
     setSaving(true)
-
     try {
       const response = await attendanceApi.submit({
         classroom_id: Number(selectedClass),
@@ -263,13 +252,62 @@ function AttendancePage() {
           ...record,
           row_key: record.student_id,
           status: record.status || 'present',
+          email_status: record.email_status || (['absent', 'late'].includes(record.status) ? 'pending' : 'not_required'),
         })),
       )
-      toast.success('Đã gửi điểm danh', 'Hệ thống đã lưu trạng thái và ghi nhận thông báo cho phụ huynh nếu có vắng/đi muộn.')
+      toast.success('Đã gửi điểm danh', 'Hệ thống đã lưu trạng thái điểm danh.')
     } catch (error) {
       toast.error('Không gửi được điểm danh', error.message || 'Vui lòng kiểm tra lại dữ liệu.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const sendEmailForStudent = async (studentId) => {
+    const student = records.find((r) => r.student_id === studentId)
+    if (['absent', 'late'].includes(student?.status) && student?.email_status !== 'sent') {
+      setSendingEmail(true)
+      try {
+        await emailNotificationApi.send({
+          type: 'attendance',
+          student_ids: [studentId],
+        })
+        updateRecord(studentId, { email_status: 'sent' })
+        toast.success('Đã gửi email', 'Email thông báo điểm danh đã được gửi đến phụ huynh.')
+      } catch (error) {
+        toast.error('Gửi email thất bại', error.message || 'Vui lòng thử lại sau.')
+      } finally {
+        setSendingEmail(false)
+      }
+    }
+  }
+
+  const sendEmailAll = async () => {
+    const absentLateIds = records
+      .filter((r) => ['absent', 'late'].includes(r.status) && r.email_status !== 'sent')
+      .map((r) => r.student_id)
+
+    if (absentLateIds.length === 0) {
+      toast.error('Không có học sinh nào cần gửi email', 'Tất cả đã được gửi hoặc không có vắng/đi muộn.')
+      return
+    }
+
+    setSendingEmail(true)
+    try {
+      await emailNotificationApi.send({
+        type: 'attendance',
+        student_ids: absentLateIds,
+      })
+      setRecords((current) =>
+        current.map((r) =>
+          absentLateIds.includes(r.student_id) ? { ...r, email_status: 'sent' } : r,
+        ),
+      )
+      toast.success('Đã gửi email', `Đã gửi email cho ${absentLateIds.length} học sinh.`)
+    } catch (error) {
+      toast.error('Gửi email thất bại', error.message || 'Vui lòng thử lại sau.')
+    } finally {
+      setSendingEmail(false)
     }
   }
 
@@ -278,11 +316,18 @@ function AttendancePage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-brand-text">Điểm danh</h1>
-          <p className="mt-1 text-sm text-brand-muted">Trợ giảng điểm danh hằng ngày theo từng lớp.</p>
+          <p className="mt-1 text-sm text-brand-muted">Điểm danh hằng ngày theo từng lớp.</p>
         </div>
-        <Button as={Link} icon={History} to="/diem-danh/lich-su" variant="secondary">
-          Lịch sử
-        </Button>
+        <div className="flex gap-2">
+          {user?.role === 'school_admin' || user?.role === 'system_admin' ? (
+            <Button as={Link} icon={Settings} to="/diem-danh/quan-ly-buoi" variant="secondary">
+              Quản lý buổi
+            </Button>
+          ) : null}
+          <Button as={Link} icon={History} to="/diem-danh/lich-su" variant="secondary">
+            Lịch sử
+          </Button>
+        </div>
       </div>
 
       {loadingClasses ? (
@@ -381,7 +426,12 @@ function AttendancePage() {
                 {
                   header: 'Trạng thái',
                   key: 'status',
-                  render: (row) => <StatusBadge status={row.status} />,
+                  render: (row) => <StatusBadge options={statusOptions} status={row.status} />,
+                },
+                {
+                  header: 'Email',
+                  key: 'email_status',
+                  render: (row) => <StatusBadge options={emailStatusOptions} status={row.email_status} />,
                 },
                 {
                   header: 'Thao tác',
@@ -434,6 +484,17 @@ function AttendancePage() {
                       >
                         Vắng
                       </Button>
+                      {['absent', 'late'].includes(row.status) && (
+                        <Button
+                          className="h-9 px-3"
+                          disabled={sendingEmail || row.email_status === 'sent'}
+                          icon={row.email_status === 'sent' ? MailCheck : Mail}
+                          onClick={() => sendEmailForStudent(row.student_id)}
+                          variant={row.email_status === 'sent' ? 'ghost' : 'secondary'}
+                        >
+                          {row.email_status === 'sent' ? 'Đã gửi' : 'Gửi email'}
+                        </Button>
+                      )}
                     </div>
                   ),
                 },
@@ -443,7 +504,17 @@ function AttendancePage() {
             />
           )}
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {records.some((r) => ['absent', 'late'].includes(r.status) && r.email_status !== 'sent') && (
+              <Button
+                disabled={sendingEmail}
+                icon={Send}
+                onClick={sendEmailAll}
+                variant="secondary"
+              >
+                Gửi email tất cả (vắng/đi muộn)
+              </Button>
+            )}
             <Button disabled={saving || !selectedClass || records.length === 0} icon={Save} onClick={handleSubmit}>
               {saving ? 'Đang gửi' : 'Gửi điểm danh'}
             </Button>

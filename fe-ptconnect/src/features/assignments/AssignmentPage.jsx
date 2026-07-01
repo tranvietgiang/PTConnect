@@ -121,7 +121,6 @@ function AssignmentPage() {
   const { user } = useAuth();
   const toast = useToast();
   const canCreate = ["school_admin", "system_admin", "teacher"].includes(user?.role);
-  const canAssignByGrade = ["school_admin", "system_admin"].includes(user?.role);
   const isStudent = user?.role === "student";
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -174,6 +173,7 @@ function AssignmentPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, []);
 
@@ -194,6 +194,16 @@ function AssignmentPage() {
         Number(classroom.grade_level) === Number(selectedGradeLevel),
     );
   }, [classes, selectedGradeLevel]);
+
+  const formClasses = useMemo(() => {
+    if (!form.grade_level) {
+      return [];
+    }
+
+    return classes.filter(
+      (classroom) => String(classroom.grade_level) === String(form.grade_level),
+    );
+  }, [classes, form.grade_level]);
 
   const visibleAssignments = useMemo(() => {
     const searchTerm = normalizeSearch(studentSearch);
@@ -328,18 +338,32 @@ function AssignmentPage() {
   ]);
 
   const updateForm = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+
+      if (field === "grade_level") {
+        next.classroom_id = "";
+      }
+
+      return next;
+    });
+    setErrors((current) => ({
+      ...current,
+      [field]: undefined,
+      classroom_id: undefined,
+      grade_level: undefined,
+    }));
   };
 
   const validateForm = () => {
     const nextErrors = {};
 
     if (!form.title.trim()) nextErrors.title = "Vui lòng nhập tiêu đề bài tập.";
-    if (!form.classroom_id && (!canAssignByGrade || !form.grade_level)) {
-      nextErrors.scope = canAssignByGrade
-        ? "Vui lòng chọn lớp hoặc khối."
-        : "Vui lòng chọn lớp được phân công.";
+    if (!form.grade_level) nextErrors.grade_level = "Vui lòng chọn khối.";
+    if (!form.classroom_id) {
+      nextErrors.classroom_id = form.grade_level
+        ? "Vui lòng chọn lớp."
+        : "Vui lòng chọn khối trước, sau đó chọn lớp.";
     }
 
     setErrors(nextErrors);
@@ -368,8 +392,6 @@ function AssignmentPage() {
       payload.append("description", form.description.trim());
       payload.append("status", "published");
       if (form.classroom_id) payload.append("classroom_id", form.classroom_id);
-      if (canAssignByGrade && form.grade_level)
-        payload.append("grade_level", form.grade_level);
       if (form.due_date) payload.append("due_date", form.due_date);
       if (form.attachment_file)
         payload.append("attachment_file", form.attachment_file);
@@ -914,37 +936,38 @@ function AssignmentPage() {
               value={form.due_date}
             />
             <Select
-              error={errors.scope}
+              error={errors.grade_level}
+              id="assignment-grade"
+              label="Khối"
+              onChange={(event) =>
+                updateForm("grade_level", event.target.value)
+              }
+              value={form.grade_level}
+            >
+              <option value="">Chọn khối</option>
+              <option value="10">Khối 10</option>
+              <option value="11">Khối 11</option>
+              <option value="12">Khối 12</option>
+            </Select>
+            <Select
+              disabled={!form.grade_level}
+              error={errors.classroom_id}
               id="assignment-class"
-              label="Giao theo lớp"
+              label="Lớp"
               onChange={(event) =>
                 updateForm("classroom_id", event.target.value)
               }
               value={form.classroom_id}
             >
-              <option value="">Không chọn lớp</option>
-              {classes.map((classroom) => (
+              <option value="">
+                {form.grade_level ? "Chọn lớp" : "Chọn khối trước"}
+              </option>
+              {formClasses.map((classroom) => (
                 <option key={classroom.id} value={classroom.id}>
                   {classroom.name}
                 </option>
               ))}
             </Select>
-            {canAssignByGrade ? (
-              <Select
-                error={errors.scope}
-                id="assignment-grade"
-                label="Hoặc giao theo khối"
-                onChange={(event) =>
-                  updateForm("grade_level", event.target.value)
-                }
-                value={form.grade_level}
-              >
-                <option value="">Không chọn khối</option>
-                <option value="10">Khối 10</option>
-                <option value="11">Khối 11</option>
-                <option value="12">Khối 12</option>
-              </Select>
-            ) : null}
             <Input
               id="assignment-description"
               label="Mô tả"

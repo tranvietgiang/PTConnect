@@ -1,9 +1,11 @@
 import {
+  Bell,
   BookOpen,
   CalendarCheck,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
+  Settings,
   ShieldCheck,
   Users,
   X,
@@ -60,6 +62,20 @@ const navItems = [
     label: "Điểm của tôi",
     roles: ["student"],
     to: "/diem-cua-toi",
+    end: true,
+  },
+  {
+    icon: Bell,
+    label: "Thông báo",
+    roles: ["school_admin", "system_admin", "teacher", "assistant"],
+    to: "/thong-bao",
+    end: true,
+  },
+  {
+    icon: Settings,
+    label: "Quản lý buổi học",
+    roles: ["school_admin", "system_admin"],
+    to: "/diem-danh/quan-ly-buoi",
     end: true,
   },
 ];

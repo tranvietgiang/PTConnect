@@ -113,48 +113,76 @@ function StudentListPage() {
         <Loading label="Đang tải danh sách học sinh" />
       ) : (
         <Table
-          columns={[
-            { header: "Mã", key: "student_code" },
-            {
-              header: "Họ tên",
-              key: "full_name",
-              render: (row) => (
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-bg text-sm font-semibold text-brand-teal-dark">
-                    {row.avatar_url ? (
-                      <img alt={row.full_name} className="size-full object-cover" src={row.avatar_url} />
-                    ) : (
-                      row.full_name?.charAt(0) || "H"
-                    )}
-                  </div>
-                  <Link
-                    className="font-semibold text-brand-teal-dark"
-                    to={`/hoc-sinh/${row.id}`}
-                  >
-                    {row.full_name}
-                  </Link>
-                </div>
-              ),
-            },
-            { header: "Lớp", key: "class_name" },
-            { header: "SĐT", key: "phone", render: (row) => row.phone || "-" },
-            {
-              header: "Trạng thái",
-              key: "status",
-              render: (row) =>
-                row.status === "studying" ? "Đang học" : row.status,
-            },
-            {
-              header: "",
-              key: "action",
-              render: () => (
-                <Search
-                  aria-hidden="true"
-                  className="size-4 text-brand-muted"
-                />
-              ),
-            },
-          ]}
+          columns={
+            user?.role === 'teacher' || user?.role === 'assistant'
+              ? [
+                  { header: "Mã HS", key: "student_code" },
+                  {
+                    header: "Họ tên",
+                    key: "full_name",
+                    render: (row) => (
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-bg text-sm font-semibold text-brand-teal-dark">
+                          {row.avatar_url ? (
+                            <img alt={row.full_name} className="size-full object-cover" src={row.avatar_url} />
+                          ) : (
+                            row.full_name?.charAt(0) || "H"
+                          )}
+                        </div>
+                        <Link
+                          className="font-semibold text-brand-teal-dark"
+                          to={`/hoc-sinh/${row.id}`}
+                        >
+                          {row.full_name}
+                        </Link>
+                      </div>
+                    ),
+                  },
+                  { header: "Trường C3", key: "high_school", render: (row) => row.high_school || "-" },
+                ]
+              : [
+                  { header: "Mã", key: "student_code" },
+                  {
+                    header: "Họ tên",
+                    key: "full_name",
+                    render: (row) => (
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-bg text-sm font-semibold text-brand-teal-dark">
+                          {row.avatar_url ? (
+                            <img alt={row.full_name} className="size-full object-cover" src={row.avatar_url} />
+                          ) : (
+                            row.full_name?.charAt(0) || "H"
+                          )}
+                        </div>
+                        <Link
+                          className="font-semibold text-brand-teal-dark"
+                          to={`/hoc-sinh/${row.id}`}
+                        >
+                          {row.full_name}
+                        </Link>
+                      </div>
+                    ),
+                  },
+                  { header: "Lớp", key: "class_name" },
+                  { header: "SĐT", key: "phone", render: (row) => row.phone || "-" },
+                  {
+                    header: "Trạng thái",
+                    key: "status",
+                    render: (row) =>
+                      row.status === "studying" ? "Đang học" : row.status,
+                  },
+                  {
+                    header: "",
+                    key: "action",
+                    render: () => (
+                      <Search
+                        aria-hidden="true"
+                        className="size-4 text-brand-muted"
+                      />
+                    ),
+                  },
+                ]
+          }
           data={filteredStudents}
           emptyText="Chưa có học sinh"
         />
