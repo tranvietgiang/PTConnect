@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\ClassroomController;
 use App\Http\Controllers\Api\ScoreController;
 use App\Http\Controllers\Api\StudentController;
+use App\Models\AcademicYear;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/me', [AuthController::class, 'me']);
@@ -18,6 +21,35 @@ Route::prefix('auth')->group(function (): void {
 });
 
 Route::middleware('jwt.auth')->group(function (): void {
+    Route::get('/academic-years', function (Request $request): array {
+        $query = AcademicYear::query()->orderByDesc('start_date');
+
+        if ($request->boolean('active')) {
+            $query->where('is_active', true);
+        }
+
+        return $query->get(['id', 'name', 'start_date', 'end_date', 'is_active'])->toArray();
+    });
+
+    Route::get('/users', function (Request $request): array {
+        $roles = $request->input('role');
+        $query = User::query()->where('is_active', true)->orderBy('name');
+
+        if ($roles) {
+            $allowed = ['system_admin', 'school_admin', 'teacher', 'assistant', 'student'];
+            $filterRoles = array_intersect(
+                array_map('trim', explode(',', $roles)),
+                $allowed,
+            );
+
+            if ($filterRoles !== []) {
+                $query->whereIn('role', $filterRoles);
+            }
+        }
+
+        return $query->get(['id', 'name', 'email', 'role'])->toArray();
+    });
+
     Route::get('/classes', [ClassroomController::class, 'index']);
     Route::get('/classes/{classroom}', [ClassroomController::class, 'show']);
     Route::post('/classes', [ClassroomController::class, 'store'])->middleware('role:system_admin,school_admin');

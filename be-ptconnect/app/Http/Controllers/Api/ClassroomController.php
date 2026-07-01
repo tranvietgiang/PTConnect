@@ -65,21 +65,27 @@ class ClassroomController extends Controller
                 Rule::unique('classrooms', 'name')->where('academic_year_id', $academicYear->id),
             ],
             'grade_level' => ['required', 'integer', Rule::in([10, 11, 12])],
+            'academic_year_id' => ['sometimes', 'integer', 'exists:academic_years,id'],
+            'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'total_lessons' => ['required', 'integer', 'min:1', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'string', Rule::in(['active', 'inactive', 'upcoming'])],
         ]);
 
         $classroom = Classroom::query()->create([
-            'academic_year_id' => $academicYear->id,
+            'academic_year_id' => $validated['academic_year_id'] ?? $academicYear->id,
+            'teacher_id' => $validated['teacher_id'] ?? null,
             'name' => trim($validated['name']),
             'grade_level' => $validated['grade_level'],
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'total_lessons' => $validated['total_lessons'],
             'description' => $validated['description'] ?? null,
-            'is_active' => true,
+            'is_active' => $validated['is_active'] ?? true,
+            'status' => $validated['status'] ?? 'active',
         ]);
 
         return $this->success('Class created.', $this->serialize($classroom->load('academicYear')->loadCount('students')), 201);
@@ -101,21 +107,25 @@ class ClassroomController extends Controller
                     ->ignore($classroom->id),
             ],
             'grade_level' => ['required', 'integer', Rule::in([10, 11, 12])],
+            'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'total_lessons' => ['required', 'integer', 'min:1', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'string', Rule::in(['active', 'inactive', 'upcoming'])],
         ]);
 
         $classroom->update([
             'name' => trim($validated['name']),
             'grade_level' => $validated['grade_level'],
+            'teacher_id' => $validated['teacher_id'] ?? $classroom->teacher_id,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'total_lessons' => $validated['total_lessons'],
             'description' => $validated['description'] ?? null,
             'is_active' => $validated['is_active'] ?? $classroom->is_active,
+            'status' => $validated['status'] ?? $classroom->status,
         ]);
 
         return $this->success('Class updated.', $this->serialize($classroom->refresh()->load('academicYear')->loadCount('students')));
@@ -162,21 +172,25 @@ class ClassroomController extends Controller
         $classroom->loadMissing('course:id,name,grade_level,start_date,end_date,status');
         $course = $classroom->course;
 
+        $classroom->loadMissing('teacher:id,name,email');
+
         return [
             'id' => $classroom->id,
             'course_id' => $classroom->course_id,
             'course_name' => $course?->name,
             'teacher_id' => $classroom->teacher_id,
+            'teacher_name' => $classroom->teacher?->name,
             'name' => $classroom->name,
-            'grade_level' => $course?->grade_level,
-            'start_date' => $course?->start_date?->toDateString(),
-            'end_date' => $course?->end_date?->toDateString(),
+            'grade_level' => $classroom->grade_level ?? $course?->grade_level,
+            'start_date' => ($classroom->start_date ?? $course?->start_date)?->toDateString(),
+            'end_date' => ($classroom->end_date ?? $course?->end_date)?->toDateString(),
             'total_lessons' => $classroom->total_lessons ?? null,
             'description' => $classroom->description ?? null,
-            'academic_year' => null,
+            'academic_year_id' => $classroom->academic_year_id,
+            'academic_year' => $classroom->academicYear?->name,
             'students_count' => $classroom->students_count ?? 0,
             'is_active' => $classroom->status === 'active',
-            'status' => $classroom->status,
+            'status' => $classroom->status ?? 'active',
         ];
     }
 

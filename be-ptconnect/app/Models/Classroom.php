@@ -11,14 +11,27 @@ class Classroom extends Model
 {
     protected $fillable = [
         'course_id',
+        'academic_year_id',
         'teacher_id',
         'name',
+        'grade_level',
+        'start_date',
+        'end_date',
+        'total_lessons',
+        'description',
+        'is_active',
         'status',
     ];
 
     protected function casts(): array
     {
-        return [];
+        return [
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'grade_level' => 'integer',
+            'total_lessons' => 'integer',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function course(): BelongsTo

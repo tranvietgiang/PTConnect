@@ -320,16 +320,22 @@ function StudentCreatePage() {
                 placeholder="Không bắt buộc"
                 value={form.parent_full_name}
               />
-              <Input
+              <Select
                 error={errors.parent_relation}
                 id="parent-relation"
                 label="Quan hệ"
                 onChange={(event) =>
                   updateForm("parent_relation", event.target.value)
                 }
-                placeholder="Cha, mẹ, người giám hộ..."
-                value={form.parent_relation}
-              />
+                value={form.parent_relation || ""}
+              >
+                <option value="">Chọn quan hệ</option>
+                <option value="Cha">Cha</option>
+                <option value="Mẹ">Mẹ</option>
+                <option value="Anh">Anh</option>
+                <option value="Chị">Chị</option>
+                <option value="Người khác">Người khác</option>
+              </Select>
               <Input
                 className="sm:col-span-2"
                 error={errors.address}
