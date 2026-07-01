@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PTConnect - Tính năng đã code</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fa;
+      color: #1f2937;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 14mm;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 3px solid #147d8b;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid #d8e2e7;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      color: #0f6370;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 18px 0 8px;
+      color: #0f6370;
+      font-size: 16px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 6px;
+      color: #1f2937;
+      font-size: 13px;
+    }
+
+    .subtitle,
+    .meta,
+    .muted {
+      color: #6b7280;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .metric,
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 10px;
+    }
+
+    .metric strong {
+      display: block;
+      color: #e5262a;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li {
+      margin: 3px 0;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 0 5px 5px 0;
+      border-radius: 999px;
+      background: #eef7f8;
+      color: #0f6370;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+    }
+
+    .note {
+      border-left: 4px solid #e5262a;
+      background: #fff5f5;
+      padding: 10px 12px;
+      margin-top: 14px;
+    }
+
+    .footer {
+      margin-top: 18px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 10px;
+      color: #6b7280;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div class="brand">
+        <img class="logo" src="../fe-ptconnect/public/logo-ptconnect/ptconnect-favicon-512.png" alt="PTConnect">
+        <div>
+          <h1>PTConnect - Tính năng đã code</h1>
+          <p class="subtitle">Báo cáo ngắn các chức năng đã triển khai trong hệ thống Laravel + React.</p>
+        </div>
+      </div>
+      <div class="meta">Ngày lập: 29/06/2026</div>
+    </header>
+
+    <section class="summary">
+      <div class="metric"><strong>4</strong><span>Vai trò người dùng</span></div>
+      <div class="metric"><strong>12</strong><span>Lớp demo 10, 11, 12</span></div>
+      <div class="metric"><strong>1-100</strong><span>Buổi học/lớp</span></div>
+      <div class="metric"><strong>Email</strong><span>Thông báo phụ huynh</span></div>
+    </section>
+
+    <section>
+      <h2>1. Đăng nhập, phân quyền và giao diện chung</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Xác thực</h3>
+          <ul>
+            <li>Đăng nhập bằng email hoặc username.</li>
+            <li>Refresh token và nhớ đăng nhập, không lưu mật khẩu thô ở localStorage.</li>
+            <li>Đăng xuất xóa trạng thái đăng nhập.</li>
+            <li>Kiểm tra `/api/me` để khôi phục user khi mở lại trang.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Giao diện</h3>
+          <ul>
+            <li>React + Tailwind CSS, màu chính #E5262A và #147D8B.</li>
+            <li>Font sans-serif hiện đại, toàn bộ màn hình hiển thị tiếng Việt.</li>
+            <li>Toast thông báo lỗi/thành công, trạng thái loading toàn hệ thống.</li>
+            <li>Login có nút con mắt để ẩn/hiện mật khẩu.</li>
+          </ul>
+        </div>
+      </div>
+      <p>
+        <span class="tag">Admin</span>
+        <span class="tag">Teacher</span>
+        <span class="tag">Assistant</span>
+        <span class="tag">Parent</span>
+      </p>
+    </section>
+
+    <section>
+      <h2>2. Quản lý lớp học, học sinh và phụ huynh</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Lớp học</h3>
+          <ul>
+            <li>Danh sách lớp theo khối 10, 11, 12 môn Sinh học.</li>
+            <li>Admin thêm và sửa lớp học.</li>
+            <li>Mỗi lớp có ngày bắt đầu, ngày kết thúc và tổng số buổi học.</li>
+            <li>Validate tổng số buổi học từ 1 đến 100.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Học sinh và phụ huynh</h3>
+          <ul>
+            <li>Quản lý hồ sơ học sinh, mã học sinh, lớp, ngày sinh, địa chỉ.</li>
+            <li>Lưu thông tin phụ huynh theo học sinh.</li>
+            <li>Cấp tài khoản phụ huynh để đăng nhập xem thông tin con.</li>
+            <li>Import danh sách học sinh bằng CSV/XLSX.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Điểm danh và buổi học</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Điểm danh</h3>
+          <ul>
+            <li>Admin và trợ giảng được điểm danh theo lớp được phân quyền.</li>
+            <li>Chọn khối, chọn lớp, tìm học sinh trong danh sách.</li>
+            <li>Trạng thái điểm danh: Có mặt, Đi muộn, Vắng.</li>
+            <li>Đi muộn có nhập số phút, backend validate tối đa 600 phút.</li>
+            <li>Gửi email/thông báo cho phụ huynh khi học sinh vắng hoặc đi muộn.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Buổi học</h3>
+          <ul>
+            <li>Dropdown buổi học tự sinh từ Lesson 1 đến Lesson N theo tổng số buổi của lớp.</li>
+            <li>Backend validate `lesson_number` nằm trong phạm vi lớp.</li>
+            <li>Admin có tab Buổi học để xem, thêm, sửa, xóa buổi học toàn hệ thống.</li>
+            <li>Lọc buổi học theo khối, lớp và ngày học.</li>
+            <li>Lịch sử điểm danh hiển thị lớp, ngày, buổi, số học sinh có mặt/muộn/vắng.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Bài tập, nộp bài và chấm điểm</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Bài tập</h3>
+          <ul>
+            <li>Admin/giáo viên tạo bài tập theo lớp, có hạn nộp và file tài liệu.</li>
+            <li>Danh sách bài tập có tìm kiếm, lọc lớp, lọc trạng thái nộp bài.</li>
+            <li>Bài nộp mới nhất được ưu tiên hiển thị phía trên.</li>
+            <li>Theo dõi số học sinh đã nộp/chưa nộp trong từng lớp.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Nộp bài và chấm</h3>
+          <ul>
+            <li>Phụ huynh/học sinh xem bài tập của đúng lớp mình.</li>
+            <li>Hiển thị trạng thái Đã nộp hoặc Chưa nộp từ database.</li>
+            <li>Cho phép thay file đã nộp trước hạn.</li>
+            <li>Quá hạn thì khóa upload ở frontend và backend cũng chặn nộp muộn.</li>
+            <li>Giáo viên chấm điểm, nhập nhận xét và xem file bài nộp.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Điểm số, thông báo và trang phụ huynh</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Điểm số</h3>
+          <ul>
+            <li>Giáo viên nhập điểm bài tập/bài kiểm tra và nhận xét.</li>
+            <li>Validate điểm tối đa một chữ số thập phân, ví dụ 9 hoặc 9,9.</li>
+            <li>Trang điểm có lọc lớp, bài tập, ngày nộp, điểm và tên học sinh.</li>
+            <li>Phụ huynh chỉ được xem điểm, không được sửa hoặc nộp bài.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Phụ huynh và thông báo</h3>
+          <ul>
+            <li>Phụ huynh xem hồ sơ học sinh, lớp, lịch sử điểm danh, điểm số và thông báo.</li>
+            <li>Phụ huynh chỉ thấy dữ liệu của con mình.</li>
+            <li>Giáo viên gửi thông báo theo lớp hoặc khối.</li>
+            <li>Email dùng cho điểm danh, điểm số và thông báo chính.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>6. Database, seeder và cấu hình hệ thống</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Database và seed demo</h3>
+          <ul>
+            <li>Migration gốc đã có các cột lớp học và buổi học ngay khi migrate fresh.</li>
+            <li>Seeder tạo lớp khối 10, 11, 12, mỗi khối khoảng 4 lớp.</li>
+            <li>Mỗi lớp seed khoảng 10-20 học sinh để dễ test.</li>
+            <li>Có lớp 12A4 không có học sinh để test import danh sách.</li>
+            <li>Tài khoản demo dùng mật khẩu 12345678.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Cấu hình</h3>
+          <ul>
+            <li>Docker Compose chỉnh đúng service backend, frontend, MySQL, phpMyAdmin.</li>
+            <li>CORS và API URL cấu hình cho `192.168.33.12`.</li>
+            <li>Favicon/logo PTConnect đã khai báo trong frontend.</li>
+            <li>GitHub Actions dùng secret/variable thay vì hard-code thông tin nhạy cảm.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>Ghi chú:</strong> Bản này chỉ liệt kê các tính năng đã code trong source hiện tại. Tính năng Zalo chưa đưa vào danh sách vì đang để optional cho giai đoạn sau.
+    </div>
+
+    <footer class="footer">
+      PTConnect - Hệ thống quản lý lớp học Sinh học, điểm danh, bài tập, điểm số và thông tin phụ huynh.
+    </footer>
+  </main>
+</body>
+</html>
